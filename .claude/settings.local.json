@@ -10,7 +10,14 @@
       "Bash(npm install:*)",
       "mcp__supabase__apply_migration",
       "Bash(node:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "mcp__serena__search_for_pattern",
+      "mcp__serena__get_symbols_overview",
+      "mcp__serena__find_symbol",
+      "Bash(git commit:*)",
+      "Bash(curl:*)",
+      "Bash(npm test)"
     ]
   },
   "enableAllProjectMcpServers": true,
