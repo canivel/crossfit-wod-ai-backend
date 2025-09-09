@@ -1,18 +1,22 @@
 import {
-  workoutGenerationChain,
-  coachingCuesChain,
-  modificationsChain,
-  explanationChain
+  getWorkoutGenerationChain,
+  getCoachingCuesChain,
+  getModificationsChain,
+  getExplanationChain
 } from '../config/langchain.js';
 import { APIError } from '../middleware/errorHandler.js';
 
 export class LangChainService {
   constructor() {
-    this.chains = {
-      workoutGeneration: workoutGenerationChain,
-      coachingCues: coachingCuesChain,
-      modifications: modificationsChain,
-      explanation: explanationChain
+    // No longer initialize chains here - use lazy loading
+  }
+
+  getChains() {
+    return {
+      workoutGeneration: getWorkoutGenerationChain(),
+      coachingCues: getCoachingCuesChain(),
+      modifications: getModificationsChain(),
+      explanation: getExplanationChain()
     };
   }
 
@@ -37,7 +41,8 @@ export class LangChainService {
       };
 
       // Invoke the chain
-      const workout = await this.chains.workoutGeneration.invoke(input);
+      const chains = this.getChains();
+      const workout = await chains.workoutGeneration.invoke(input);
 
       // Validate the response structure
       if (!workout.name || !workout.movements || !Array.isArray(workout.movements)) {
@@ -82,7 +87,8 @@ export class LangChainService {
         userLevel: userLevel
       };
 
-      const cues = await this.chains.coachingCues.invoke(input);
+      const chains = this.getChains();
+      const cues = await chains.coachingCues.invoke(input);
 
       // Validate response
       if (!Array.isArray(cues)) {
@@ -120,7 +126,8 @@ export class LangChainService {
           : 'none'
       };
 
-      const modifications = await this.chains.modifications.invoke(input);
+      const chains = this.getChains();
+      const modifications = await chains.modifications.invoke(input);
 
       // Validate structure
       if (!modifications.easier || !modifications.harder) {
@@ -156,7 +163,8 @@ export class LangChainService {
           : 'general fitness'
       };
 
-      const explanation = await this.chains.explanation.invoke(input);
+      const chains = this.getChains();
+      const explanation = await chains.explanation.invoke(input);
 
       return {
         content: explanation,
@@ -182,7 +190,8 @@ export class LangChainService {
       const { temperature = 0.7, maxTokens = 1500 } = options;
       
       // Direct model call for custom prompts
-      const response = await this.chains.workoutGeneration.getLangChainModel().invoke(
+      const chains = this.getChains();
+      const response = await chains.workoutGeneration.invoke(
         prompt,
         {
           temperature,

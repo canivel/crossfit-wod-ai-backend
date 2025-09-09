@@ -63,6 +63,22 @@ A secure, AI-powered backend service for generating personalized CrossFit workou
 
 ## 🔧 Installation
 
+### **Quick Setup (Recommended)**
+```bash
+git clone <repository-url>
+cd crossfit-wod-ai-backend
+./scripts/setup-dev.sh
+```
+
+The setup script will:
+- ✅ Check Node.js version
+- ✅ Install dependencies  
+- ✅ Create `.env.local` from template
+- ✅ Set up git hooks to prevent secret commits
+- ✅ Run basic tests
+
+### **Manual Setup**
+
 1. **Clone the repository**
 ```bash
 git clone <repository-url>
@@ -76,11 +92,16 @@ npm install
 
 3. **Environment setup**
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
 
-4. **Configure environment variables**
-Edit `.env` file with your API keys and Supabase credentials:
+4. **Get secrets from team**
+- **Contact team lead** for development API keys and Supabase credentials
+- **Never commit real secrets** - `.env.local` is gitignored for security
+- **Share via secure channels**: 1Password, encrypted messages, or secure vault
+
+5. **Configure environment variables**
+Edit `.env.local` file with actual values from your team:
 ```env
 # Server Configuration
 PORT=3000
