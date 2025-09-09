@@ -105,76 +105,170 @@ async function apiCall(endpoint, options = {}) {
     }
 }
 
-// Dashboard data loading
+// Dashboard data loading - optimized with minimal data
 async function loadDashboardData() {
     try {
-        dashboardData = await apiCall('/dashboard');
-        updateDashboardMetrics();
-        updateRecentActivity();
-        updateChartData();
+        // Load only essential metrics first - fast response
+        const metricsPromise = apiCall('/dashboard/metrics');
+        
+        // Load charts data separately to avoid blocking
+        setTimeout(() => loadChartData(), 100);
+        
+        // Load recent activity with limit
+        setTimeout(() => loadRecentActivity(), 200);
+        
+        const metrics = await metricsPromise;
+        updateDashboardMetrics(metrics);
+        
     } catch (error) {
-        // Use mock data if API fails
-        dashboardData = getMockDashboardData();
-        updateDashboardMetrics();
-        updateRecentActivity();
-        updateChartData();
+        // Use lightweight mock data
+        const lightweightData = getLightweightMockData();
+        updateDashboardMetrics(lightweightData);
+        
+        // Load other components with delay
+        setTimeout(() => loadChartData(), 100);
+        setTimeout(() => loadRecentActivity(), 200);
     }
 }
 
-function getMockDashboardData() {
+// Separate chart loading for better performance
+async function loadChartData() {
+    try {
+        const chartData = await apiCall('/dashboard/charts');
+        updateChartData(chartData);
+    } catch (error) {
+        // Load mock chart data
+        const mockCharts = getMockChartData();
+        updateChartData(mockCharts);
+    }
+}
+
+// Load recent activity with pagination
+async function loadRecentActivity(page = 1, limit = 5) {
+    try {
+        const activity = await apiCall(`/dashboard/activity?page=${page}&limit=${limit}`);
+        updateRecentActivity(activity.data, page === 1);
+    } catch (error) {
+        // Load mock activity data
+        const mockActivity = getMockActivityData(limit);
+        updateRecentActivity(mockActivity, page === 1);
+    }
+}
+
+// Lightweight mock data for fast initial load
+function getLightweightMockData() {
     return {
         metrics: {
-            totalUsers: 1247,
-            newUsersThisMonth: 156,
+            totalUsers: 53000,
+            todaysUsers: 2300,
+            thisWeekRevenue: 3462,
+            thisMonthRevenue: 103430,
             userGrowth: 12.5,
-            monthlyRevenue: 12847.50,
-            activeSubscriptions: 892,
-            totalWorkouts: 2847,
-            workoutsThisMonth: 423
-        },
-        recentActivity: [
-            {
-                type: 'user_signup',
-                description: 'New user registered: john.doe@example.com',
-                timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-                icon: 'user-plus'
-            },
-            {
-                type: 'workout_generated',
-                description: 'Workout generated: AMRAP',
-                timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-                icon: 'dumbbell'
-            },
-            {
-                type: 'subscription',
-                description: 'User upgraded to Pro plan',
-                timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
-                icon: 'credit-card'
-            }
-        ],
-        chartData: {
-            userGrowth: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                data: [45, 89, 134, 156, 189, 247]
-            },
-            revenue: {
-                labels: ['Free', 'Pro', 'Elite'],
-                data: [355, 312, 88]
-            }
+            revenueGrowth: 8.2,
+            subscriptionGrowth: -2.1,
+            workoutGrowth: 22.4
         }
     };
 }
 
-function updateDashboardMetrics() {
-    if (!dashboardData) return;
+// Mock chart data loaded separately
+function getMockChartData() {
+    return {
+        userGrowth: {
+            labels: ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            data: [50, 40, 300, 320, 500, 350, 200, 230, 500]
+        },
+        salesOverview: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+            datasets: [
+                { name: 'Sales', data: [50, 30, 90, 60, 120, 80, 100] },
+                { name: 'Revenue', data: [30, 60, 80, 45, 100, 55, 90] }
+            ]
+        }
+    };
+}
+
+// Mock activity data with pagination support
+function getMockActivityData(limit = 5) {
+    const activities = [
+        {
+            type: 'user_signup',
+            description: 'New user registered',
+            user: 'john.doe@example.com',
+            timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+            icon: 'user-plus'
+        },
+        {
+            type: 'subscription',
+            description: 'User upgraded to Pro plan',
+            user: 'sarah.smith@example.com', 
+            timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+            icon: 'credit-card'
+        },
+        {
+            type: 'workout_generated',
+            description: 'Workout generated: AMRAP',
+            user: 'mike.jones@example.com',
+            timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+            icon: 'dumbbell'
+        },
+        {
+            type: 'support_ticket',
+            description: 'New support ticket opened',
+            user: 'anna.wilson@example.com',
+            timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+            icon: 'headphones'
+        },
+        {
+            type: 'user_signup',
+            description: 'New user registered',
+            user: 'david.brown@example.com',
+            timestamp: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+            icon: 'user-plus'
+        }
+    ];
     
-    const metrics = dashboardData.metrics;
+    return activities.slice(0, limit);
+}
+
+// Keep original function for backward compatibility
+function getMockDashboardData() {
+    return {
+        metrics: getLightweightMockData().metrics,
+        chartData: getMockChartData(),
+        recentActivity: getMockActivityData(3)
+    };
+}
+
+function updateDashboardMetrics(data) {
+    const metrics = data?.metrics || data;
+    if (!metrics) return;
     
-    // Update metric cards
-    document.getElementById('total-users').textContent = formatNumber(metrics.totalUsers);
-    document.getElementById('monthly-revenue').textContent = formatCurrency(metrics.monthlyRevenue);
-    document.getElementById('active-subs').textContent = formatNumber(metrics.activeSubscriptions);
-    document.getElementById('workouts-generated').textContent = formatNumber(metrics.totalWorkouts);
+    // Update metric cards with new optimized data structure
+    const totalUsersEl = document.getElementById('total-users');
+    const todaysUsersEl = document.getElementById('todays-users');
+    const thisWeekEl = document.getElementById('this-week');
+    const thisMonthEl = document.getElementById('this-month');
+    
+    if (totalUsersEl) {
+        totalUsersEl.textContent = formatCurrency(metrics.totalUsers || 53000);
+        totalUsersEl.parentElement.classList.remove('loading');
+    }
+    
+    if (todaysUsersEl) {
+        todaysUsersEl.textContent = formatNumber(metrics.todaysUsers || 2300);
+        todaysUsersEl.parentElement.classList.remove('loading');
+    }
+    
+    if (thisWeekEl) {
+        thisWeekEl.textContent = formatCurrency(metrics.thisWeekRevenue || 3462);
+        thisWeekEl.parentElement.classList.remove('loading');
+    }
+    
+    if (thisMonthEl) {
+        thisMonthEl.textContent = formatCurrency(metrics.thisMonthRevenue || 103430);
+        thisMonthEl.parentElement.classList.remove('loading');
+    }
 }
 
 function updateRecentActivity() {
@@ -209,52 +303,91 @@ function createActivityElement(activity) {
     return div;
 }
 
-// Users data loading
-async function loadUsersData() {
+// Users data loading with pagination
+let usersCurrentPage = 1;
+let usersLoading = false;
+
+async function loadUsersData(page = 1, limit = 20, reset = true) {
+    if (usersLoading) return;
+    
+    usersLoading = true;
+    if (reset) showUsersLoading();
+    
     try {
-        const users = await apiCall('/users');
-        updateUsersTable(users.users);
+        const users = await apiCall(`/users?page=${page}&limit=${limit}`);
+        updateUsersTable(users.users || [], reset);
+        usersCurrentPage = page;
     } catch (error) {
-        // Use mock data
-        const mockUsers = [
-            {
-                id: '1',
-                email: 'john.doe@example.com',
-                displayName: 'John Doe',
-                plan: 'Pro',
-                status: 'active',
-                joinedAt: '2025-01-15'
-            },
-            {
-                id: '2',
-                email: 'sarah.smith@example.com',
-                displayName: 'Sarah Smith',
-                plan: 'Free',
-                status: 'active',
-                joinedAt: '2025-02-01'
-            }
-        ];
-        updateUsersTable(mockUsers);
+        // Use lightweight mock data
+        const mockUsers = getMockUsers(limit, page);
+        updateUsersTable(mockUsers, reset);
+        usersCurrentPage = page;
+    } finally {
+        usersLoading = false;
+        hideUsersLoading();
     }
 }
 
-function updateUsersTable(users) {
+// Generate mock users for pagination
+function getMockUsers(limit = 20, page = 1) {
+    const users = [];
+    const startIndex = (page - 1) * limit;
+    
+    for (let i = 0; i < limit; i++) {
+        const index = startIndex + i;
+        users.push({
+            id: `user-${index + 1}`,
+            email: `user${index + 1}@example.com`,
+            displayName: `User ${index + 1}`,
+            plan: ['Free', 'Pro', 'Elite'][index % 3],
+            status: 'active',
+            joinedAt: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString()
+        });
+    }
+    
+    return users;
+}
+
+function showUsersLoading() {
     const tbody = document.getElementById('users-table');
-    tbody.innerHTML = '';
+    if (tbody) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="px-6 py-8 text-center">
+                    <div class="flex items-center justify-center">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mr-3"></div>
+                        <span class="text-gray-400">Loading users...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+function hideUsersLoading() {
+    // Loading will be replaced by actual data in updateUsersTable
+}
+
+function updateUsersTable(users, reset = true) {
+    const tbody = document.getElementById('users-table');
+    
+    if (reset) {
+        tbody.innerHTML = '';
+    }
     
     users.forEach(user => {
         const row = document.createElement('tr');
-        row.className = 'hover:bg-gray-50';
+        row.className = 'hover:bg-gray-700/50 transition-colors border-b border-gray-700';
         
         row.innerHTML = `
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
-                    <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                    <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
                         ${user.displayName?.charAt(0) || 'U'}
                     </div>
                     <div class="ml-4">
-                        <div class="text-sm font-medium text-gray-900">${user.displayName || 'N/A'}</div>
-                        <div class="text-sm text-gray-500">${user.email}</div>
+                        <div class="text-sm font-medium text-white">${user.displayName || 'N/A'}</div>
+                        <div class="text-sm text-gray-400">${user.email}</div>
                     </div>
                 </div>
             </td>
@@ -268,19 +401,58 @@ function updateUsersTable(users) {
                     ${user.status}
                 </span>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                 ${new Date(user.joinedAt).toLocaleDateString()}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <td class="px-6 py-4 whitespace-nowrap text-sm">
                 <div class="flex space-x-2">
-                    <button class="text-blue-600 hover:text-blue-900 font-medium">Edit</button>
-                    <button class="text-red-600 hover:text-red-900 font-medium">Suspend</button>
+                    <button class="text-blue-400 hover:text-blue-300 font-medium transition-colors">Edit</button>
+                    <button class="text-red-400 hover:text-red-300 font-medium transition-colors">Suspend</button>
                 </div>
             </td>
         `;
         
         tbody.appendChild(row);
     });
+    
+    // Add pagination controls if this is the first page
+    if (reset) {
+        addUsersPagination();
+    }
+}
+
+function addUsersPagination() {
+    const container = document.querySelector('#users-section .bg-dark-card:last-child');
+    if (!container) return;
+    
+    // Remove existing pagination
+    const existingPagination = container.querySelector('.pagination-controls');
+    if (existingPagination) {
+        existingPagination.remove();
+    }
+    
+    // Add new pagination controls
+    const paginationHtml = `
+        <div class="pagination-controls flex justify-between items-center px-6 py-4 border-t border-gray-700">
+            <div class="text-sm text-gray-400">
+                Showing ${(usersCurrentPage - 1) * 20 + 1} to ${usersCurrentPage * 20} of 1,247 users
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="loadUsersData(${usersCurrentPage - 1})" 
+                        ${usersCurrentPage === 1 ? 'disabled' : ''} 
+                        class="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    Previous
+                </button>
+                <span class="px-3 py-1 text-sm text-gray-400">Page ${usersCurrentPage}</span>
+                <button onclick="loadUsersData(${usersCurrentPage + 1})" 
+                        class="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors">
+                    Next
+                </button>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', paginationHtml);
 }
 
 // Chart initialization
