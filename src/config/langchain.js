@@ -6,14 +6,27 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Initialize Anthropic model with Claude
-export const anthropicModel = new ChatAnthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-  modelName: 'claude-3-sonnet-20240229',
-  temperature: 0.7,
-  maxTokens: 2500,
-  verbose: process.env.NODE_ENV === 'development'
-});
+// Lazy initialize Anthropic model with Claude (only when needed)
+let anthropicModel = null;
+
+export const getAnthropicModel = () => {
+  if (!anthropicModel) {
+    // Check if we have a valid API key
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey || apiKey === 'sk-ant-placeholder-for-development') {
+      throw new Error('Valid Anthropic API key required. Please set ANTHROPIC_API_KEY in your .env file.');
+    }
+    
+    anthropicModel = new ChatAnthropic({
+      apiKey: apiKey,
+      modelName: 'claude-3-sonnet-20240229',
+      temperature: 0.7,
+      maxTokens: 2500,
+      verbose: process.env.NODE_ENV === 'development'
+    });
+  }
+  return anthropicModel;
+};
 
 // Workout generation prompt template
 export const workoutGenerationPrompt = ChatPromptTemplate.fromMessages([
@@ -113,28 +126,28 @@ export const explanationPrompt = ChatPromptTemplate.fromMessages([
   Keep under 200 words, be motivating and educational.`]
 ]);
 
-// Create chains for each use case
-export const workoutGenerationChain = RunnableSequence.from([
+// Create chains for each use case (lazy-loaded)
+export const getWorkoutGenerationChain = () => RunnableSequence.from([
   workoutGenerationPrompt,
-  anthropicModel,
+  getAnthropicModel(),
   new JsonOutputParser()
 ]);
 
-export const coachingCuesChain = RunnableSequence.from([
+export const getCoachingCuesChain = () => RunnableSequence.from([
   coachingCuesPrompt,
-  anthropicModel,
+  getAnthropicModel(),
   new JsonOutputParser()
 ]);
 
-export const modificationsChain = RunnableSequence.from([
+export const getModificationsChain = () => RunnableSequence.from([
   modificationsPrompt,
-  anthropicModel,
+  getAnthropicModel(),
   new JsonOutputParser()
 ]);
 
-export const explanationChain = RunnableSequence.from([
+export const getExplanationChain = () => RunnableSequence.from([
   explanationPrompt,
-  anthropicModel,
+  getAnthropicModel(),
   new StringOutputParser()
 ]);
 
@@ -147,12 +160,12 @@ export const langsmithConfig = {
 
 // Export configuration object
 export default {
-  model: anthropicModel,
+  getModel: getAnthropicModel,
   chains: {
-    workoutGeneration: workoutGenerationChain,
-    coachingCues: coachingCuesChain,
-    modifications: modificationsChain,
-    explanation: explanationChain
+    workoutGeneration: getWorkoutGenerationChain,
+    coachingCues: getCoachingCuesChain,
+    modifications: getModificationsChain,
+    explanation: getExplanationChain
   },
   prompts: {
     workoutGeneration: workoutGenerationPrompt,
