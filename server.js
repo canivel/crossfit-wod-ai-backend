@@ -76,7 +76,7 @@ app.get('/', (req, res) => {
 
 // Admin dashboard route
 app.get('/admin', (req, res) => {
-  res.sendFile(join(__dirname, 'admin-dashboard.html'));
+  res.sendFile(join(__dirname, 'public/admin/index.html'));
 });
 
 // Health routes (no auth required)

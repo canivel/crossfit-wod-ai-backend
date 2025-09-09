@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrossFit WOD AI - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { 
+            font-family: 'Inter', sans-serif; 
+        }
+        body {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e40af 100%);
+            min-height: 100vh;
+        }
+        .bg-dark-primary { background: #0f0f23; }
+        .bg-dark-secondary { background: #1a1a3a; }
+        .bg-dark-card { background: rgba(30, 27, 75, 0.4); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .bg-dark-sidebar { background: rgba(15, 15, 35, 0.95); backdrop-filter: blur(10px); border-right: 1px solid rgba(255, 255, 255, 0.1); }
+        
+        .gradient-card-1 { background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); }
+        .gradient-card-2 { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
+        .gradient-card-3 { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .gradient-card-4 { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3); }
+        
+        .sidebar-item { 
+            transition: all 0.2s ease; 
+            border-radius: 12px;
+            margin: 4px 0;
+        }
+        .sidebar-item:hover { background: rgba(139, 92, 246, 0.1); }
+        .sidebar-item.active { 
+            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); 
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+        }
+        
+        .chart-container { background: rgba(30, 27, 75, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); }
+        
+        .loading { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        
+        .text-gradient { 
+            background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .glass-button {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .glass-button:hover {
+            background: rgba(139, 92, 246, 0.2);
+            border: 1px solid rgba(139, 92, 246, 0.5);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-white">
+    <!-- Navigation Header -->
+    <nav class="bg-dark-sidebar fixed w-full top-0 z-50 h-16">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8 h-full">
+            <div class="flex justify-between items-center h-full">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+                            <i data-lucide="zap" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <h1 class="text-xl font-bold text-gradient">CrossFit WOD AI</h1>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <button class="glass-button p-2 rounded-lg text-gray-300 hover:text-white transition-colors">
+                            <i data-lucide="bell" class="w-5 h-5"></i>
+                            <span class="absolute -top-1 -right-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center text-[10px]">3</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                            A
+                        </div>
+                        <div class="hidden md:block">
+                            <span class="text-sm font-medium text-white">Admin User</span>
+                            <p class="text-xs text-gray-400">Super Admin</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex pt-16">
+        <!-- Sidebar -->
+        <div class="w-64 bg-dark-sidebar h-screen fixed left-0 overflow-y-auto">
+            <div class="p-6">
+                <nav class="space-y-2">
+                    <a href="#" onclick="showSection('dashboard')" class="sidebar-item active flex items-center px-4 py-3 text-sm font-medium text-white rounded-xl">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5 mr-3"></i>
+                        Dashboard
+                    </a>
+                    <a href="#" onclick="showSection('users')" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium text-gray-300 rounded-xl">
+                        <i data-lucide="users" class="w-5 h-5 mr-3"></i>
+                        Users
+                    </a>
+                    <a href="#" onclick="showSection('analytics')" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium text-gray-300 rounded-xl">
+                        <i data-lucide="trending-up" class="w-5 h-5 mr-3"></i>
+                        Analytics
+                    </a>
+                    <a href="#" onclick="showSection('subscriptions')" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium text-gray-300 rounded-xl">
+                        <i data-lucide="credit-card" class="w-5 h-5 mr-3"></i>
+                        Subscriptions
+                    </a>
+                    <a href="#" onclick="showSection('coupons')" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium text-gray-300 rounded-xl">
+                        <i data-lucide="ticket" class="w-5 h-5 mr-3"></i>
+                        Coupons
+                    </a>
+                    <a href="#" onclick="showSection('support')" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium text-gray-300 rounded-xl">
+                        <i data-lucide="headphones" class="w-5 h-5 mr-3"></i>
+                        Support
+                        <span class="ml-auto bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs px-2 py-1 rounded-full">2</span>
+                    </a>
+                    <a href="#" onclick="showSection('settings')" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium text-gray-300 rounded-xl">
+                        <i data-lucide="settings" class="w-5 h-5 mr-3"></i>
+                        Settings
+                    </a>
+                </nav>
+                
+                <!-- Help Section -->
+                <div class="mt-8 p-4 bg-dark-card rounded-xl">
+                    <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center mb-3">
+                        <i data-lucide="help-circle" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <h3 class="text-sm font-semibold text-white mb-2">Need help?</h3>
+                    <p class="text-xs text-gray-400 mb-3">Check our documentation for detailed guides.</p>
+                    <button class="w-full glass-button text-white text-xs font-medium py-2 px-3 rounded-lg">
+                        Documentation
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-64 p-8 bg-transparent">
+            <!-- Dashboard Section -->
+            <div id="dashboard-section" class="section">
+                <!-- Header -->
+                <div class="mb-8">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h1 class="text-3xl font-bold text-white mb-2">Dashboard</h1>
+                            <p class="text-gray-400">Monitor your CrossFit WOD AI platform performance and user engagement.</p>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button class="glass-button text-white px-4 py-2 rounded-lg font-medium text-sm">
+                                <i data-lucide="download" class="w-4 h-4 mr-2 inline"></i>
+                                Export
+                            </button>
+                            <button class="glass-button text-white px-4 py-2 rounded-lg font-medium text-sm">
+                                <i data-lucide="calendar" class="w-4 h-4 mr-2 inline"></i>
+                                Last 30 days
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metrics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-dark-card rounded-2xl p-6 card-hover">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <div class="w-12 h-12 gradient-card-1 rounded-xl flex items-center justify-center mb-4">
+                                    <i data-lucide="users" class="w-6 h-6 text-white"></i>
+                                </div>
+                                <p class="text-gray-400 text-sm mb-1">Total Users</p>
+                                <p class="text-3xl font-bold text-white mb-2" id="total-users">$53,000</p>
+                                <div class="flex items-center text-sm">
+                                    <span class="text-green-400 bg-green-400/10 px-2 py-1 rounded-full text-xs mr-2">+55%</span>
+                                    <span class="text-gray-400">+12.5% from last month</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-dark-card rounded-2xl p-6 card-hover">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <div class="w-12 h-12 gradient-card-2 rounded-xl flex items-center justify-center mb-4">
+                                    <i data-lucide="trending-up" class="w-6 h-6 text-white"></i>
+                                </div>
+                                <p class="text-gray-400 text-sm mb-1">Today's Users</p>
+                                <p class="text-3xl font-bold text-white mb-2" id="monthly-revenue">2,300</p>
+                                <div class="flex items-center text-sm">
+                                    <span class="text-green-400 bg-green-400/10 px-2 py-1 rounded-full text-xs mr-2">+3%</span>
+                                    <span class="text-gray-400">+8.2% from yesterday</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-dark-card rounded-2xl p-6 card-hover">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <div class="w-12 h-12 gradient-card-3 rounded-xl flex items-center justify-center mb-4">
+                                    <i data-lucide="credit-card" class="w-6 h-6 text-white"></i>
+                                </div>
+                                <p class="text-gray-400 text-sm mb-1">This Week</p>
+                                <p class="text-3xl font-bold text-white mb-2" id="active-subs">$3,462</p>
+                                <div class="flex items-center text-sm">
+                                    <span class="text-red-400 bg-red-400/10 px-2 py-1 rounded-full text-xs mr-2">-2%</span>
+                                    <span class="text-gray-400">-15.3% from last week</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-dark-card rounded-2xl p-6 card-hover">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <div class="w-12 h-12 gradient-card-4 rounded-xl flex items-center justify-center mb-4">
+                                    <i data-lucide="activity" class="w-6 h-6 text-white"></i>
+                                </div>
+                                <p class="text-gray-400 text-sm mb-1">This Month</p>
+                                <p class="text-3xl font-bold text-white mb-2" id="workouts-generated">$103,430</p>
+                                <div class="flex items-center text-sm">
+                                    <span class="text-green-400 bg-green-400/10 px-2 py-1 rounded-full text-xs mr-2">+12%</span>
+                                    <span class="text-gray-400">+22.4% from last month</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Dashboard Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                    <!-- Built by developers section (Soft UI Dashboard style) -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-dark-card rounded-2xl p-6 card-hover">
+                            <div class="mb-6">
+                                <h3 class="text-xl font-bold text-white mb-2">Built by developers</h3>
+                                <h4 class="text-lg font-semibold text-gradient mb-3">CrossFit WOD AI Dashboard</h4>
+                                <p class="text-gray-400 text-sm mb-6">From colors, cards, typography to complex elements, you will find the full documentation.</p>
+                                <button class="glass-button text-white px-4 py-2 rounded-lg font-medium text-sm">
+                                    Read More →
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- User Growth Chart -->
+                        <div class="bg-dark-card rounded-2xl p-6 card-hover mt-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-lg font-semibold text-white">Active Users</h3>
+                                <p class="text-sm text-gray-400"><span class="text-green-400">+23%</span> than last week</p>
+                            </div>
+                            <canvas id="userGrowthChart" width="400" height="200"></canvas>
+                            
+                            <!-- Legend -->
+                            <div class="flex justify-center space-x-6 mt-4 pt-4 border-t border-gray-700">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"></div>
+                                    <span class="text-sm text-gray-400">Users</span>
+                                    <span class="text-sm font-semibold text-white">36K</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full"></div>
+                                    <span class="text-sm text-gray-400">Clicks</span>
+                                    <span class="text-sm font-semibold text-white">2m</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 bg-gradient-to-r from-orange-400 to-yellow-400 rounded-full"></div>
+                                    <span class="text-sm text-gray-400">Sales</span>
+                                    <span class="text-sm font-semibold text-white">435$</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 bg-gradient-to-r from-red-400 to-pink-400 rounded-full"></div>
+                                    <span class="text-sm text-gray-400">Items</span>
+                                    <span class="text-sm font-semibold text-white">43</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="space-y-6">
+                        <!-- Work with the rockets card -->
+                        <div class="bg-gradient-to-br from-blue-600 to-purple-700 rounded-2xl p-6 card-hover text-white">
+                            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4">
+                                <i data-lucide="rocket" class="w-6 h-6 text-white"></i>
+                            </div>
+                            <h3 class="text-lg font-bold mb-2">Work with the rockets</h3>
+                            <p class="text-sm text-white/80 mb-4">Wealth creation is an evolutionarily recent positive-sum game. It is all about who take the opportunity first.</p>
+                            <button class="text-white text-sm font-semibold">
+                                Read More →
+                            </button>
+                        </div>
+
+                        <!-- Sales overview chart -->
+                        <div class="bg-dark-card rounded-2xl p-6 card-hover">
+                            <div class="mb-4">
+                                <h3 class="text-lg font-semibold text-white mb-2">Sales overview</h3>
+                                <p class="text-sm text-green-400">📈 4% more in 2021</p>
+                            </div>
+                            <canvas id="revenueChart" width="300" height="180"></canvas>
+                        </div>
+
+                        <!-- Orders overview -->
+                        <div class="bg-dark-card rounded-2xl p-6 card-hover">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-white mb-2">Orders overview</h3>
+                                    <p class="text-sm text-green-400">📈 24% this month</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Timeline -->
+                            <div class="space-y-4">
+                                <div class="flex items-center space-x-4">
+                                    <div class="w-3 h-3 bg-green-400 rounded-full"></div>
+                                    <div class="flex-1">
+                                        <p class="text-sm text-white font-medium">$2400, Design changes</p>
+                                        <p class="text-xs text-gray-400">22 DEC 7:20 PM</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-4">
+                                    <div class="w-3 h-3 bg-red-400 rounded-full"></div>
+                                    <div class="flex-1">
+                                        <p class="text-sm text-white font-medium">New order #1832412</p>
+                                        <p class="text-xs text-gray-400">21 DEC 11 PM</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-4">
+                                    <div class="w-3 h-3 bg-blue-400 rounded-full"></div>
+                                    <div class="flex-1">
+                                        <p class="text-sm text-white font-medium">Server payments for April</p>
+                                        <p class="text-xs text-gray-400">21 DEC 9:34 PM</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-4">
+                                    <div class="w-3 h-3 bg-orange-400 rounded-full"></div>
+                                    <div class="flex-1">
+                                        <p class="text-sm text-white font-medium">New card added for order #4395133</p>
+                                        <p class="text-xs text-gray-400">20 DEC 2:20 AM</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Projects Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Projects Table -->
+                    <div class="bg-dark-card rounded-2xl p-6 card-hover">
+                        <h3 class="text-lg font-semibold text-white mb-4">Projects</h3>
+                        <p class="text-sm text-green-400 mb-6">📈 30 done this month</p>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-3 bg-dark-secondary/30 rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
+                                        <span class="text-white font-bold text-sm">B</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-semibold text-white">Bootstrap 5</p>
+                                        <p class="text-xs text-gray-400">Most popular</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm font-semibold text-white">$14,000</p>
+                                    <div class="flex items-center space-x-1 mt-1">
+                                        <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                                        <span class="text-xs text-green-400">working</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="bg-dark-card rounded-2xl p-6 card-hover">
+                        <h3 class="text-lg font-semibold text-white mb-6">Recent Activity</h3>
+                        <div class="space-y-4" id="recent-activity">
+                            <div class="flex items-center space-x-4 p-3 bg-dark-secondary/30 rounded-lg">
+                                <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                                    <i data-lucide="user-plus" class="w-5 h-5 text-white"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-white">New user registered</p>
+                                    <p class="text-xs text-gray-400">john.doe@example.com joined</p>
+                                </div>
+                                <span class="text-xs text-gray-400">2m ago</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Section -->
+            <div id="users-section" class="section hidden">
+                <div class="mb-8">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900 mb-2">User Management</h2>
+                            <p class="text-gray-600">Manage user accounts, subscriptions, and permissions.</p>
+                        </div>
+                        <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                            <i data-lucide="plus" class="w-4 h-4 mr-2 inline"></i>
+                            Add User
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search and Filters -->
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <div class="flex-1">
+                            <input type="text" placeholder="Search users..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <select class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option>All Plans</option>
+                            <option>Free</option>
+                            <option>Pro</option>
+                            <option>Elite</option>
+                        </select>
+                        <select class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option>All Status</option>
+                            <option>Active</option>
+                            <option>Inactive</option>
+                            <option>Suspended</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Users Table -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="users-table">
+                                <!-- Users will be loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Section -->
+            <div id="analytics-section" class="section hidden">
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">Analytics & Insights</h2>
+                    <p class="text-gray-600">Deep dive into platform usage, user behavior, and performance metrics.</p>
+                </div>
+
+                <!-- Analytics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+                        <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="activity" class="w-8 h-8 text-blue-600"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">User Engagement</h3>
+                        <p class="text-3xl font-bold text-blue-600 mb-2">73.5%</p>
+                        <p class="text-sm text-gray-500">Daily active users</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+                        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="target" class="w-8 h-8 text-green-600"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Conversion Rate</h3>
+                        <p class="text-3xl font-bold text-green-600 mb-2">12.4%</p>
+                        <p class="text-sm text-gray-500">Free to paid conversion</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+                        <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="refresh-ccw" class="w-8 h-8 text-purple-600"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Retention Rate</h3>
+                        <p class="text-3xl font-bold text-purple-600 mb-2">89.2%</p>
+                        <p class="text-sm text-gray-500">30-day retention</p>
+                    </div>
+                </div>
+
+                <!-- Detailed Analytics Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Feature Usage</h3>
+                        <canvas id="featureUsageChart" width="400" height="250"></canvas>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Platform Distribution</h3>
+                        <canvas id="platformChart" width="400" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subscriptions Section -->
+            <div id="subscriptions-section" class="section hidden">
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">Subscription Management</h2>
+                    <p class="text-gray-600">Monitor and manage user subscriptions, billing, and plan changes.</p>
+                </div>
+
+                <!-- Subscription Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+                        <div class="text-2xl font-bold text-blue-600 mb-2">400</div>
+                        <div class="text-sm text-gray-500">Free Users</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+                        <div class="text-2xl font-bold text-green-600 mb-2">312</div>
+                        <div class="text-sm text-gray-500">Pro Subscribers</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+                        <div class="text-2xl font-bold text-purple-600 mb-2">88</div>
+                        <div class="text-sm text-gray-500">Elite Subscribers</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+                        <div class="text-2xl font-bold text-red-600 mb-2">$12,847</div>
+                        <div class="text-sm text-gray-500">Monthly Revenue</div>
+                    </div>
+                </div>
+
+                <!-- Subscriptions Table -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Recent Subscriptions</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Billing</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="subscriptions-table">
+                                <!-- Subscriptions will be loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coupons Section -->
+            <div id="coupons-section" class="section hidden">
+                <div class="mb-8">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900 mb-2">Coupon Management</h2>
+                            <p class="text-gray-600">Create and manage discount coupons and promotional codes.</p>
+                        </div>
+                        <button onclick="showCreateCouponModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                            <i data-lucide="plus" class="w-4 h-4 mr-2 inline"></i>
+                            Create Coupon
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Coupon Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-2xl font-bold text-gray-900">23</div>
+                                <div class="text-sm text-gray-500">Active Coupons</div>
+                            </div>
+                            <i data-lucide="ticket" class="w-8 h-8 text-green-500"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-2xl font-bold text-gray-900">156</div>
+                                <div class="text-sm text-gray-500">Total Redemptions</div>
+                            </div>
+                            <i data-lucide="check-circle" class="w-8 h-8 text-blue-500"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-2xl font-bold text-gray-900">$2,340</div>
+                                <div class="text-sm text-gray-500">Discount Given</div>
+                            </div>
+                            <i data-lucide="dollar-sign" class="w-8 h-8 text-purple-500"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-2xl font-bold text-gray-900">12.4%</div>
+                                <div class="text-sm text-gray-500">Conversion Rate</div>
+                            </div>
+                            <i data-lucide="trending-up" class="w-8 h-8 text-orange-500"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coupons Table -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usage</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expires</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="coupons-table">
+                                <!-- Coupons will be loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Support Section -->
+            <div id="support-section" class="section hidden">
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">Support Tickets</h2>
+                    <p class="text-gray-600">Manage customer support tickets and user inquiries.</p>
+                </div>
+
+                <!-- Support Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-2xl font-bold text-red-600">8</div>
+                                <div class="text-sm text-gray-500">Open Tickets</div>
+                            </div>
+                            <i data-lucide="alert-circle" class="w-8 h-8 text-red-500"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-2xl font-bold text-yellow-600">12</div>
+                                <div class="text-sm text-gray-500">In Progress</div>
+                            </div>
+                            <i data-lucide="clock" class="w-8 h-8 text-yellow-500"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-2xl font-bold text-green-600">45</div>
+                                <div class="text-sm text-gray-500">Resolved Today</div>
+                            </div>
+                            <i data-lucide="check-circle" class="w-8 h-8 text-green-500"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-2xl font-bold text-blue-600">2.3h</div>
+                                <div class="text-sm text-gray-500">Avg Response Time</div>
+                            </div>
+                            <i data-lucide="timer" class="w-8 h-8 text-blue-500"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Support Tickets Table -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="support-table">
+                                <!-- Support tickets will be loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Section -->
+            <div id="settings-section" class="section hidden">
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">Platform Settings</h2>
+                    <p class="text-gray-600">Configure platform settings, API keys, and system preferences.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- API Configuration -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">API Configuration</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Rate Limit (requests/minute)</label>
+                                <input type="number" value="300" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Max Tokens Per Request</label>
+                                <input type="number" value="2000" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                                Update API Settings
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Subscription Plans -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Subscription Plans</h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <div class="font-medium">Free Plan</div>
+                                    <div class="text-sm text-gray-500">10 workouts/month</div>
+                                </div>
+                                <button class="text-blue-600 hover:text-blue-800 font-medium text-sm">Edit</button>
+                            </div>
+                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <div class="font-medium">Pro Plan - $9.99/month</div>
+                                    <div class="text-sm text-gray-500">100 workouts/month + coaching</div>
+                                </div>
+                                <button class="text-blue-600 hover:text-blue-800 font-medium text-sm">Edit</button>
+                            </div>
+                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <div class="font-medium">Elite Plan - $19.99/month</div>
+                                    <div class="text-sm text-gray-500">Unlimited + priority support</div>
+                                </div>
+                                <button class="text-blue-600 hover:text-blue-800 font-medium text-sm">Edit</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Health -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">System Health</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Database</span>
+                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Healthy</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">API Response Time</span>
+                                <span class="text-sm font-medium">245ms</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">AI Provider Status</span>
+                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Connected</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Storage Used</span>
+                                <span class="text-sm font-medium">2.3GB / 10GB</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notification Settings -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Notifications</h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="font-medium text-sm">Email Alerts</div>
+                                    <div class="text-xs text-gray-500">System issues and critical updates</div>
+                                </div>
+                                <input type="checkbox" checked class="toggle">
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="font-medium text-sm">Usage Alerts</div>
+                                    <div class="text-xs text-gray-500">High API usage notifications</div>
+                                </div>
+                                <input type="checkbox" checked class="toggle">
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="font-medium text-sm">Support Tickets</div>
+                                    <div class="text-xs text-gray-500">New ticket notifications</div>
+                                </div>
+                                <input type="checkbox" class="toggle">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 flex items-center space-x-4">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <span class="text-gray-700">Loading...</span>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
