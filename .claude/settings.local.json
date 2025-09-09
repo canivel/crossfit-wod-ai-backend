@@ -17,7 +17,13 @@
       "mcp__serena__find_symbol",
       "Bash(git commit:*)",
       "Bash(curl:*)",
-      "Bash(npm test)"
+      "Bash(npm test)",
+      "Bash(timeout 3 curl -s http://localhost:3000/api/health)",
+      "Bash(taskkill:*)",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__get_anon_key",
+      "Bash(timeout 5 sleep 3)"
     ]
   },
   "enableAllProjectMcpServers": true,

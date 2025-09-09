@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrossFit WOD AI - Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        gray: {
+                            50: '#fafafa',
+                            100: '#f5f5f5',
+                            200: '#e5e5e5',
+                            300: '#d4d4d4',
+                            400: '#a3a3a3',
+                            500: '#737373',
+                            600: '#525252',
+                            700: '#404040',
+                            800: '#262626',
+                            900: '#171717',
+                            950: '#0a0a0a'
+                        },
+                        blue: {
+                            500: '#3b82f6',
+                            600: '#2563eb'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: #fafafa;
+            color: #171717;
+            line-height: 1.6;
+        }
+        
+        .dark body {
+            background: #0a0a0a;
+            color: #fafafa;
+        }
+        
+        .sidebar {
+            background: #ffffff;
+            border-right: 1px solid #e5e5e5;
+        }
+        
+        .dark .sidebar {
+            background: #171717;
+            border-right: 1px solid #262626;
+        }
+        
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            margin: 2px 8px;
+            border-radius: 8px;
+            color: #525252;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .nav-item:hover {
+            background: #f5f5f5;
+            color: #171717;
+        }
+        
+        .nav-item.active {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .dark .nav-item {
+            color: #a3a3a3;
+        }
+        
+        .dark .nav-item:hover {
+            background: #262626;
+            color: #fafafa;
+        }
+        
+        .dark .nav-item.active {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .card {
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .dark .card {
+            background: #171717;
+            border: 1px solid #262626;
+        }
+        
+        .metric-card {
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.2s;
+        }
+        
+        .metric-card:hover {
+            border-color: #d4d4d4;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .dark .metric-card {
+            background: #171717;
+            border: 1px solid #262626;
+        }
+        
+        .dark .metric-card:hover {
+            border-color: #404040;
+        }
+        
+        .header {
+            background: white;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        
+        .dark .header {
+            background: #171717;
+            border-bottom: 1px solid #262626;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #525252;
+            border: 1px solid #e5e5e5;
+        }
+        
+        .btn-secondary:hover {
+            background: #e5e5e5;
+        }
+        
+        .dark .btn-secondary {
+            background: #262626;
+            color: #a3a3a3;
+            border: 1px solid #404040;
+        }
+        
+        .dark .btn-secondary:hover {
+            background: #404040;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        
+        .dark .table th,
+        .dark .table td {
+            border-bottom: 1px solid #262626;
+        }
+        
+        .table th {
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #737373;
+        }
+        
+        .dark .table th {
+            color: #a3a3a3;
+        }
+        
+        .badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .badge-blue {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        
+        .badge-green {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+        
+        .badge-gray {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+        
+        .dark .badge-blue {
+            background: rgba(59, 130, 246, 0.1);
+            color: #93c5fd;
+        }
+        
+        .dark .badge-green {
+            background: rgba(34, 197, 94, 0.1);
+            color: #86efac;
+        }
+        
+        .dark .badge-gray {
+            background: rgba(107, 114, 128, 0.1);
+            color: #d1d5db;
+        }
+        
+        .toggle {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #e5e5e5;
+            transition: .2s;
+            border-radius: 24px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .2s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #3b82f6;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+    </style>
+</head>
+<body class="dark">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="sidebar w-64 flex-shrink-0">
+            <div class="p-6">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-white">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="font-semibold text-lg">WOD AI</h1>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Admin Dashboard</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="px-3 pb-6">
+                <div class="space-y-1">
+                    <a href="#" class="nav-item active" data-tab="overview">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-3">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                        Overview
+                    </a>
+                    <a href="#" class="nav-item" data-tab="users">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-3">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        Users
+                    </a>
+                    <a href="#" class="nav-item" data-tab="analytics">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-3">
+                            <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/>
+                        </svg>
+                        Analytics
+                    </a>
+                    <a href="#" class="nav-item" data-tab="subscriptions">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-3">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
+                        </svg>
+                        Subscriptions
+                    </a>
+                    <a href="#" class="nav-item" data-tab="coupons">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-3">
+                            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                            <line x1="7" y1="7" x2="7.01" y2="7"/>
+                        </svg>
+                        Coupons
+                    </a>
+                    <a href="#" class="nav-item" data-tab="settings">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-3">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                        Settings
+                    </a>
+                </div>
+            </nav>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="header px-6 py-4 flex items-center justify-between">
+                <div>
+                    <h2 id="page-title" class="text-2xl font-semibold">Overview</h2>
+                    <p id="page-subtitle" class="text-sm text-gray-500 dark:text-gray-400 mt-1">Monitor your CrossFit WOD AI business</p>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <label class="toggle">
+                        <input type="checkbox" id="dark-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                    
+                    <div class="flex items-center space-x-2">
+                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span class="text-sm text-gray-600 dark:text-gray-300">Online</span>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Content -->
+            <main class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
+                <div class="p-6">
+                    <!-- Overview Tab -->
+                    <div id="overview-content" class="tab-content">
+                        <!-- Metrics Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <div class="metric-card">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Users</h3>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-blue-500">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    </svg>
+                                </div>
+                                <div class="flex items-end space-x-2">
+                                    <p class="text-2xl font-bold">1,247</p>
+                                    <span class="text-green-600 text-sm font-medium">+12%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-card">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Monthly Revenue</h3>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-green-500">
+                                        <line x1="12" y1="1" x2="12" y2="23"/>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                                    </svg>
+                                </div>
+                                <div class="flex items-end space-x-2">
+                                    <p class="text-2xl font-bold">$12,847</p>
+                                    <span class="text-green-600 text-sm font-medium">+8%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-card">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Active Subscriptions</h3>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-purple-500">
+                                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                        <line x1="8" y1="21" x2="16" y2="21"/>
+                                        <line x1="12" y1="17" x2="12" y2="21"/>
+                                    </svg>
+                                </div>
+                                <div class="flex items-end space-x-2">
+                                    <p class="text-2xl font-bold">892</p>
+                                    <span class="text-green-600 text-sm font-medium">+15%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-card">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Workouts Generated</h3>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-orange-500">
+                                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                                    </svg>
+                                </div>
+                                <div class="flex items-end space-x-2">
+                                    <p class="text-2xl font-bold">2,847</p>
+                                    <span class="text-green-600 text-sm font-medium">+22%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Charts Row -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="card">
+                                <h3 class="text-lg font-semibold mb-4">User Growth</h3>
+                                <canvas id="userChart" width="400" height="200"></canvas>
+                            </div>
+                            
+                            <div class="card">
+                                <h3 class="text-lg font-semibold mb-4">Revenue Breakdown</h3>
+                                <canvas id="revenueChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Users Tab -->
+                    <div id="users-content" class="tab-content hidden">
+                        <div class="card">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-lg font-semibold">User Management</h3>
+                                <button class="btn btn-primary">Add User</button>
+                            </div>
+                            
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Plan</th>
+                                        <th>Usage</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <div>
+                                                <p class="font-medium">John Doe</p>
+                                                <p class="text-sm text-gray-500">john@example.com</p>
+                                            </div>
+                                        </td>
+                                        <td><span class="badge badge-blue">Pro</span></td>
+                                        <td>45/100</td>
+                                        <td><span class="badge badge-green">Active</span></td>
+                                        <td>
+                                            <button class="btn btn-secondary text-xs">Edit</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Other tabs content placeholder -->
+                    <div id="analytics-content" class="tab-content hidden">
+                        <div class="card">
+                            <h3 class="text-lg font-semibold">Analytics Dashboard</h3>
+                            <p class="text-gray-600 dark:text-gray-400 mt-2">Advanced analytics coming soon...</p>
+                        </div>
+                    </div>
+                    
+                    <div id="subscriptions-content" class="tab-content hidden">
+                        <div class="card">
+                            <h3 class="text-lg font-semibold">Subscription Management</h3>
+                            <p class="text-gray-600 dark:text-gray-400 mt-2">Manage subscription plans and billing...</p>
+                        </div>
+                    </div>
+                    
+                    <div id="coupons-content" class="tab-content hidden">
+                        <div class="card">
+                            <h3 class="text-lg font-semibold">Coupon Management</h3>
+                            <p class="text-gray-600 dark:text-gray-400 mt-2">Create and manage discount codes...</p>
+                        </div>
+                    </div>
+                    
+                    <div id="settings-content" class="tab-content hidden">
+                        <div class="card">
+                            <h3 class="text-lg font-semibold">Settings</h3>
+                            <p class="text-gray-600 dark:text-gray-400 mt-2">Application settings and configuration...</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <script>
+        // Theme toggle
+        const darkToggle = document.getElementById('dark-toggle');
+        const body = document.body;
+        
+        darkToggle.addEventListener('change', () => {
+            body.classList.toggle('dark');
+        });
+        
+        // Navigation
+        const navItems = document.querySelectorAll('.nav-item');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const pageTitle = document.getElementById('page-title');
+        const pageSubtitle = document.getElementById('page-subtitle');
+        
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                
+                // Remove active class from all nav items
+                navItems.forEach(nav => nav.classList.remove('active'));
+                
+                // Add active class to clicked item
+                item.classList.add('active');
+                
+                // Hide all tab contents
+                tabContents.forEach(content => content.classList.add('hidden'));
+                
+                // Show selected tab content
+                const tabId = item.dataset.tab + '-content';
+                document.getElementById(tabId).classList.remove('hidden');
+                
+                // Update page title
+                pageTitle.textContent = item.textContent.trim();
+                
+                // Update subtitle based on tab
+                const subtitles = {
+                    'Overview': 'Monitor your CrossFit WOD AI business',
+                    'Users': 'Manage user accounts and subscriptions',
+                    'Analytics': 'Track user engagement and performance',
+                    'Subscriptions': 'Monitor subscription plans and revenue',
+                    'Coupons': 'Manage discount codes and promotions',
+                    'Settings': 'Configure application settings'
+                };
+                
+                pageSubtitle.textContent = subtitles[item.textContent.trim()] || '';
+            });
+        });
+        
+        // Initialize charts
+        function initCharts() {
+            // User Growth Chart
+            const userCtx = document.getElementById('userChart').getContext('2d');
+            new Chart(userCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'New Users',
+                        data: [65, 89, 134, 156, 178, 203],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#e5e5e5' },
+                            ticks: { color: '#737373' }
+                        },
+                        x: {
+                            grid: { color: '#e5e5e5' },
+                            ticks: { color: '#737373' }
+                        }
+                    }
+                }
+            });
+            
+            // Revenue Chart
+            const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+            new Chart(revenueCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Free', 'Pro', 'Elite'],
+                    datasets: [{
+                        data: [847, 312, 88],
+                        backgroundColor: ['#e5e5e5', '#3b82f6', '#8b5cf6'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#737373' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Load data
+        async function loadData() {
+            try {
+                const response = await fetch('/api/v2/admin/dashboard');
+                if (response.ok) {
+                    const data = await response.json();
+                    // Update metrics with real data
+                }
+            } catch (error) {
+                console.error('Failed to load data:', error);
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initCharts, 100);
+            loadData();
+        });
+    </script>
+</body>
+</html>

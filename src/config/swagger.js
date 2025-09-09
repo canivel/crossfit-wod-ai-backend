@@ -46,11 +46,11 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:3000/api/v2',
+        url: 'http://localhost:3000',
         description: 'Development server'
       },
       {
-        url: 'https://your-production-domain.com/api/v2',
+        url: 'https://your-production-domain.com',
         description: 'Production server'
       }
     ],

@@ -14,6 +14,7 @@ import healthRoutes from './src/routes/health.js';
 import authRoutes from './src/routes/auth.js';
 import userRoutes from './src/routes/user.js';
 import subscriptionRoutes from './src/routes/subscription.js';
+import adminRoutes from './src/routes/admin.js';
 
 // Import middleware
 import { errorHandler } from './src/middleware/errorHandler.js';
@@ -69,75 +70,13 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerOptions));
 // Serve static files
 app.use(express.static(join(__dirname, 'public')));
 
-/**
- * @swagger
- * /:
- *   get:
- *     summary: Get API information
- *     tags: [Health]
- *     responses:
- *       200:
- *         description: API information
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 version:
- *                   type: string
- *                 status:
- *                   type: string
- *                 features:
- *                   type: array
- *                   items:
- *                     type: string
- *                 endpoints:
- *                   type: object
- *                 timestamp:
- *                   type: string
- *                   format: date-time
- */
 app.get('/', (req, res) => {
-  res.json({
-    message: 'CrossFit WOD AI Backend API',
-    version: '2.0.0',
-    status: 'operational',
-    features: [
-      'AI-powered workout generation with LangChain',
-      'Supabase authentication & user management',
-      'Subscription-based rate limiting',
-      'Comprehensive API documentation',
-      'Multi-tier subscription plans'
-    ],
-    endpoints: {
-      documentation: '/api-docs',
-      health: '/api/health',
-      auth: {
-        signup: '/api/v2/auth/signup',
-        login: '/api/v2/auth/login',
-        refresh: '/api/v2/auth/refresh'
-      },
-      wod: {
-        generate: '/api/v2/wod/generate',
-        coachingCues: '/api/v2/wod/coaching-cues',
-        explain: '/api/v2/wod/explain',
-        modifications: '/api/v2/wod/modifications',
-        history: '/api/v2/wod/history'
-      },
-      user: {
-        profile: '/api/v2/user/profile',
-        subscription: '/api/v2/user/subscription',
-        usage: '/api/v2/user/usage'
-      },
-      subscription: {
-        plans: '/api/v2/subscription/plans',
-        upgrade: '/api/v2/subscription/upgrade'
-      }
-    },
-    timestamp: new Date().toISOString()
-  });
+  res.redirect('/api-docs');
+});
+
+// Admin dashboard route
+app.get('/admin', (req, res) => {
+  res.sendFile(join(__dirname, 'admin-dashboard.html'));
 });
 
 // Health routes (no auth required)
@@ -148,6 +87,7 @@ app.use('/api/v2/auth', authRoutes);
 app.use('/api/v2/user', userRoutes);
 app.use('/api/v2/subscription', subscriptionRoutes);
 app.use('/api/v2/wod', wodRoutes);
+app.use('/api/v2/admin', adminRoutes);
 
 // Legacy v1 routes (maintain backward compatibility)
 app.use('/api/v1/wod', authMiddleware, wodRoutes);

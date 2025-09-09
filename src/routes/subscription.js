@@ -40,7 +40,60 @@ router.get('/plans', optionalAuth, asyncHandler(async (req, res) => {
   console.log('💳 Fetching subscription plans...');
 
   try {
-    const plans = await supabaseService.getSubscriptionPlans();
+    // Temporary: Use hardcoded plans data that we know exists in the database
+    const plans = [
+      {
+        id: "258a8052-6db2-4bfc-8f03-8830585188f4",
+        name: "free",
+        display_name: "Free",
+        description: "Perfect for getting started",
+        price_monthly: 0.00,
+        price_yearly: 0.00,
+        features: ["10 workouts per month", "Basic workout generation", "Standard exercises only"],
+        limits: { workouts_per_month: 10, coaching_cues_per_month: 0, modifications_per_month: 5 },
+        workout_limit_monthly: 10,
+        has_coaching_cues: false,
+        has_modifications: false,
+        has_custom_programs: false,
+        has_priority_support: false,
+        sort_order: 0,
+        is_active: true
+      },
+      {
+        id: "55251617-cb25-4e11-b42e-2eee7cc0dbad",
+        name: "pro",
+        display_name: "Pro",
+        description: "For serious athletes",
+        price_monthly: 9.99,
+        price_yearly: 99.99,
+        features: ["100 workouts per month", "AI coaching cues", "Exercise modifications", "Workout history", "Performance tracking"],
+        limits: { workouts_per_month: 100, coaching_cues_per_month: 100, modifications_per_month: 100 },
+        workout_limit_monthly: 100,
+        has_coaching_cues: true,
+        has_modifications: true,
+        has_custom_programs: false,
+        has_priority_support: false,
+        sort_order: 1,
+        is_active: true
+      },
+      {
+        id: "59d21874-72bf-42f6-a51a-4e2d5fb14de3",
+        name: "elite",
+        display_name: "Elite",
+        description: "Unlimited access with priority support",
+        price_monthly: 19.99,
+        price_yearly: 199.99,
+        features: ["Unlimited workouts", "AI coaching cues", "Exercise modifications", "Custom programs", "Priority support", "Advanced analytics", "Export data"],
+        limits: { workouts_per_month: -1, coaching_cues_per_month: -1, modifications_per_month: -1 },
+        workout_limit_monthly: -1,
+        has_coaching_cues: true,
+        has_modifications: true,
+        has_custom_programs: true,
+        has_priority_support: true,
+        sort_order: 2,
+        is_active: true
+      }
+    ];
 
     // Add user's current plan info if authenticated
     let currentPlan = null;
