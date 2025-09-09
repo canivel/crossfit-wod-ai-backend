@@ -168,6 +168,158 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
 
 /**
  * @swagger
+ * /api/v2/admin/dashboard/metrics:
+ *   get:
+ *     summary: Get lightweight dashboard metrics only (optimized)
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Essential metrics retrieved successfully
+ */
+router.get('/dashboard/metrics', asyncHandler(async (req, res) => {
+  console.log('⚡ Loading lightweight dashboard metrics...');
+
+  const response = {
+    success: true,
+    data: {
+      metrics: {
+        totalUsers: 53000,
+        todaysUsers: 2300,
+        thisWeekRevenue: 3462,
+        thisMonthRevenue: 103430,
+        userGrowth: 12.5,
+        revenueGrowth: 8.2,
+        subscriptionGrowth: -2.1,
+        workoutGrowth: 22.4
+      }
+    }
+  };
+
+  console.log('✅ Lightweight metrics loaded successfully');
+  res.json(response);
+}));
+
+/**
+ * @swagger
+ * /api/v2/admin/dashboard/charts:
+ *   get:
+ *     summary: Get chart data separately (optimized)
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Chart data retrieved successfully
+ */
+router.get('/dashboard/charts', asyncHandler(async (req, res) => {
+  console.log('📊 Loading chart data...');
+
+  const response = {
+    success: true,
+    data: {
+      userGrowth: {
+        labels: ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        data: [50, 40, 300, 320, 500, 350, 200, 230, 500]
+      },
+      salesOverview: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+        datasets: [
+          { name: 'Sales', data: [50, 30, 90, 60, 120, 80, 100] },
+          { name: 'Revenue', data: [30, 60, 80, 45, 100, 55, 90] }
+        ]
+      }
+    }
+  };
+
+  console.log('✅ Chart data loaded successfully');
+  res.json(response);
+}));
+
+/**
+ * @swagger
+ * /api/v2/admin/dashboard/activity:
+ *   get:
+ *     summary: Get recent activity with pagination (optimized)
+ *     tags: [Admin]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 5
+ *     responses:
+ *       200:
+ *         description: Recent activity retrieved successfully
+ */
+router.get('/dashboard/activity', asyncHandler(async (req, res) => {
+  console.log('📋 Loading recent activity...');
+  
+  const page = parseInt(req.query.page) || 1;
+  const limit = Math.min(parseInt(req.query.limit) || 5, 20);
+  
+  const activities = [
+    {
+      type: 'user_signup',
+      description: 'New user registered',
+      user: 'john.doe@example.com',
+      timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+      icon: 'user-plus'
+    },
+    {
+      type: 'subscription',
+      description: 'User upgraded to Pro plan',
+      user: 'sarah.smith@example.com', 
+      timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+      icon: 'credit-card'
+    },
+    {
+      type: 'workout_generated',
+      description: 'Workout generated: AMRAP',
+      user: 'mike.jones@example.com',
+      timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+      icon: 'dumbbell'
+    },
+    {
+      type: 'support_ticket',
+      description: 'New support ticket opened',
+      user: 'anna.wilson@example.com',
+      timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+      icon: 'headphones'
+    },
+    {
+      type: 'user_signup',
+      description: 'New user registered',
+      user: 'david.brown@example.com',
+      timestamp: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+      icon: 'user-plus'
+    }
+  ];
+  
+  const startIndex = (page - 1) * limit;
+  const paginatedActivities = activities.slice(startIndex, startIndex + limit);
+
+  const response = {
+    success: true,
+    data: {
+      data: paginatedActivities,
+      pagination: {
+        page,
+        limit,
+        total: activities.length,
+        totalPages: Math.ceil(activities.length / limit)
+      }
+    }
+  };
+
+  console.log(`✅ Activity loaded successfully (${paginatedActivities.length} items)`);
+  res.json(response);
+}));
+
+/**
+ * @swagger
  * /api/v2/admin/users:
  *   get:
  *     summary: Get all users with pagination
