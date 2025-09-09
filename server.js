@@ -31,7 +31,39 @@ const PORT = process.env.PORT || 3000;
 
 // Security middleware
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "https://cdn.tailwindcss.com",
+        "https://cdn.jsdelivr.net",
+        "https://unpkg.com"
+      ],
+      styleSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "https://fonts.googleapis.com",
+        "https://cdn.tailwindcss.com"
+      ],
+      fontSrc: [
+        "'self'",
+        "https://fonts.gstatic.com"
+      ],
+      imgSrc: [
+        "'self'",
+        "data:",
+        "https:"
+      ],
+      connectSrc: [
+        "'self'",
+        "https://api.anthropic.com",
+        "https://api.openai.com"
+      ]
+    }
+  }
 }));
 
 // CORS configuration
