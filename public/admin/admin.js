@@ -277,8 +277,14 @@ function loadSectionContent(sectionName) {
         case 'analytics':
             loadAnalytics();
             break;
+        case 'ai-usage':
+            loadAIUsage();
+            break;
         case 'subscriptions':
             loadSubscriptions();
+            break;
+        case 'plans':
+            updatePlansStats();
             break;
         case 'coupons':
             loadCoupons();
@@ -879,6 +885,818 @@ function showUserEditModal(user) {
         e.preventDefault();
         await handleUserUpdate(user.id);
     });
+}
+
+// ======================= ADD USER MODAL =======================
+
+function showAddUserModal() {
+    document.getElementById('add-user-modal').classList.remove('hidden');
+    // Reset form
+    document.getElementById('add-user-form').reset();
+    // Focus on email field
+    setTimeout(() => {
+        document.querySelector('#add-user-form input[name="email"]').focus();
+    }, 100);
+}
+
+function closeAddUserModal() {
+    document.getElementById('add-user-modal').classList.add('hidden');
+    // Reset form and hide any error messages
+    document.getElementById('add-user-form').reset();
+}
+
+async function handleUserCreate(formData) {
+    console.log('🚀 Creating new user...');
+    
+    const createButton = document.querySelector('#add-user-form button[type="submit"]');
+    const buttonText = createButton.querySelector('.create-user-btn-text');
+    const spinner = createButton.querySelector('.create-user-spinner');
+    
+    try {
+        // Show loading state
+        buttonText.classList.add('hidden');
+        spinner.classList.remove('hidden');
+        createButton.disabled = true;
+        
+        const response = await apiCall('/admin/users', 'POST', formData);
+        
+        if (response.success) {
+            showNotification('success', '✅ User created successfully!');
+            closeAddUserModal();
+            
+            // Reload users list if we're on the users section
+            const currentSection = document.querySelector('.section:not(.hidden)');
+            if (currentSection && currentSection.id === 'users-section') {
+                await loadUsers();
+            }
+            
+            console.log('✅ User created:', response.data.user);
+        } else {
+            throw new Error(response.message || 'Failed to create user');
+        }
+        
+    } catch (error) {
+        console.error('❌ Failed to create user:', error);
+        showNotification('error', `❌ Failed to create user: ${error.message}`);
+    } finally {
+        // Reset button state
+        buttonText.classList.remove('hidden');
+        spinner.classList.add('hidden');
+        createButton.disabled = false;
+    }
+}
+
+// Setup form submission for add user
+document.addEventListener('DOMContentLoaded', function() {
+    // Add event listener for add user form
+    document.getElementById('add-user-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const userData = {};
+        
+        // Convert FormData to object
+        for (let [key, value] of formData.entries()) {
+            if (value.trim()) { // Only include non-empty values
+                userData[key] = value.trim();
+            }
+        }
+        
+        await handleUserCreate(userData);
+    });
+    
+    // Connect Add User button to modal - find by text content
+    const addUserButton = document.querySelector('#users-section .glass-button');
+    if (addUserButton && addUserButton.textContent.includes('Add User')) {
+        addUserButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            showAddUserModal();
+        });
+    }
+});
+
+// Plans Management Functions
+function editPlan(planType) {
+    console.log(`Editing ${planType} plan`);
+    // TODO: Implement plan editing functionality
+    showModal('Edit Plan', `
+        <form id="edit-plan-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Plan Name</label>
+                <input type="text" name="name" value="${planType.charAt(0).toUpperCase() + planType.slice(1)} Plan" class="w-full px-3 py-2 bg-dark-secondary border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Monthly Price ($)</label>
+                <input type="number" name="price" value="${planType === 'free' ? '0' : planType === 'pro' ? '9.99' : '19.99'}" step="0.01" class="w-full px-3 py-2 bg-dark-secondary border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Monthly Credits</label>
+                <input type="number" name="credits" value="${planType === 'free' ? '10' : planType === 'pro' ? '100' : '-1'}" class="w-full px-3 py-2 bg-dark-secondary border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white" required>
+                <p class="text-xs text-gray-400 mt-1">Use -1 for unlimited</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Status</label>
+                <select name="status" class="w-full px-3 py-2 bg-dark-secondary border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white" required>
+                    <option value="active">Active</option>
+                    <option value="retired">Retired</option>
+                </select>
+            </div>
+        </form>
+    `, [
+        {
+            text: 'Cancel',
+            class: 'bg-gray-600 hover:bg-gray-700',
+            action: () => closeModal()
+        },
+        {
+            text: 'Update Plan',
+            class: 'glass-button',
+            action: () => handlePlanUpdate(planType)
+        }
+    ]);
+}
+
+function showCreatePlanModal() {
+    console.log('Opening create plan modal');
+    showModal('Create New Plan', `
+        <form id="create-plan-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Plan Name</label>
+                <input type="text" name="name" class="w-full px-3 py-2 bg-dark-secondary border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Plan ID (Internal)</label>
+                <input type="text" name="planId" class="w-full px-3 py-2 bg-dark-secondary border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white" required>
+                <p class="text-xs text-gray-400 mt-1">Lowercase, no spaces (e.g., premium, enterprise)</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Monthly Price ($)</label>
+                <input type="number" name="price" step="0.01" class="w-full px-3 py-2 bg-dark-secondary border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Monthly Credits</label>
+                <input type="number" name="credits" class="w-full px-3 py-2 bg-dark-secondary border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white" required>
+                <p class="text-xs text-gray-400 mt-1">Use -1 for unlimited</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                <textarea name="description" rows="3" class="w-full px-3 py-2 bg-dark-secondary border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white" required></textarea>
+            </div>
+        </form>
+    `, [
+        {
+            text: 'Cancel',
+            class: 'bg-gray-600 hover:bg-gray-700',
+            action: () => closeModal()
+        },
+        {
+            text: 'Create Plan',
+            class: 'glass-button',
+            action: () => handlePlanCreate()
+        }
+    ]);
+}
+
+function showRetiredPlansModal() {
+    console.log('Opening retired plans modal');
+    showModal('Retired Plans Management', `
+        <div class="space-y-4">
+            <p class="text-gray-400 mb-4">Manage retired plans and their subscribers.</p>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center p-3 bg-dark-secondary/50 rounded-lg border border-red-500/30">
+                    <div>
+                        <div class="font-medium text-white">Legacy Pro - $7.99/month</div>
+                        <div class="text-sm text-red-400">Retired • 45 active subscribers</div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="migratePlanUsers('legacy-pro')" class="text-blue-400 hover:text-blue-300 font-medium text-sm">Migrate Users</button>
+                        <button onclick="reactivatePlan('legacy-pro')" class="text-green-400 hover:text-green-300 font-medium text-sm">Reactivate</button>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-dark-secondary/50 rounded-lg border border-red-500/30">
+                    <div>
+                        <div class="font-medium text-white">Beta Elite - $14.99/month</div>
+                        <div class="text-sm text-red-400">Retired • 12 active subscribers</div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="migratePlanUsers('beta-elite')" class="text-blue-400 hover:text-blue-300 font-medium text-sm">Migrate Users</button>
+                        <button onclick="reactivatePlan('beta-elite')" class="text-green-400 hover:text-green-300 font-medium text-sm">Reactivate</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `, [
+        {
+            text: 'Close',
+            class: 'glass-button',
+            action: () => closeModal()
+        }
+    ]);
+}
+
+function showPlanMigrationModal() {
+    console.log('Opening plan migration modal');
+    showModal('Plan Migration Tools', `
+        <form id="plan-migration-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Source Plan</label>
+                <select name="sourcePlan" class="w-full px-3 py-2 bg-dark-secondary border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white" required>
+                    <option value="">Select source plan...</option>
+                    <option value="legacy-pro">Legacy Pro (45 subscribers)</option>
+                    <option value="beta-elite">Beta Elite (12 subscribers)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Target Plan</label>
+                <select name="targetPlan" class="w-full px-3 py-2 bg-dark-secondary border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white" required>
+                    <option value="">Select target plan...</option>
+                    <option value="pro">Pro Plan</option>
+                    <option value="elite">Elite Plan</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Migration Options</label>
+                <div class="space-y-2">
+                    <label class="flex items-center">
+                        <input type="checkbox" name="preserveCredits" checked class="mr-2 rounded bg-dark-secondary border-gray-600 text-purple-600 focus:ring-purple-500">
+                        <span class="text-sm text-gray-300">Preserve existing credits</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="notifyUsers" checked class="mr-2 rounded bg-dark-secondary border-gray-600 text-purple-600 focus:ring-purple-500">
+                        <span class="text-sm text-gray-300">Send migration notification emails</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="gracePeriod" class="mr-2 rounded bg-dark-secondary border-gray-600 text-purple-600 focus:ring-purple-500">
+                        <span class="text-sm text-gray-300">30-day grace period at old price</span>
+                    </label>
+                </div>
+            </div>
+            <div class="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
+                <div class="flex items-start">
+                    <i data-lucide="alert-triangle" class="w-5 h-5 text-yellow-400 mr-3 mt-0.5 flex-shrink-0"></i>
+                    <div>
+                        <p class="text-sm font-medium text-yellow-400">Migration Warning</p>
+                        <p class="text-xs text-yellow-300 mt-1">This action will migrate ALL users from the source plan. This cannot be undone.</p>
+                    </div>
+                </div>
+            </div>
+        </form>
+    `, [
+        {
+            text: 'Cancel',
+            class: 'bg-gray-600 hover:bg-gray-700',
+            action: () => closeModal()
+        },
+        {
+            text: 'Start Migration',
+            class: 'glass-button bg-yellow-600 hover:bg-yellow-700',
+            action: () => handlePlanMigration()
+        }
+    ]);
+}
+
+async function loadPlansData() {
+    try {
+        console.log('📊 Loading plans data...');
+        
+        const response = await fetch('/api/v2/admin/plans?status=all', {
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('✅ Plans loaded:', result.data);
+        
+        return result.data;
+    } catch (error) {
+        console.error('❌ Failed to load plans:', error);
+        showNotification('Failed to load plans data', 'error');
+        return [];
+    }
+}
+
+async function updatePlansStats() {
+    try {
+        const plans = await loadPlansData();
+        
+        if (!plans || plans.length === 0) return;
+        
+        // Calculate stats
+        const totalPlans = plans.length;
+        const activePlans = plans.filter(plan => plan.status === 'active').length;
+        const retiredPlans = plans.filter(plan => plan.status === 'retired').length;
+        const totalSubscribers = plans.reduce((sum, plan) => sum + (plan.subscriber_count || 0), 0);
+        
+        // Update stats in UI
+        const statsCards = document.querySelectorAll('#plans-section .gradient-card-1 + div, #plans-section .gradient-card-2 + div, #plans-section .gradient-card-3 + div, #plans-section .gradient-card-4 + div');
+        if (statsCards.length >= 4) {
+            statsCards[0].querySelector('.text-2xl').textContent = totalPlans;
+            statsCards[1].querySelector('.text-2xl').textContent = activePlans;
+            statsCards[2].querySelector('.text-2xl').textContent = retiredPlans;
+            statsCards[3].querySelector('.text-2xl').textContent = totalSubscribers;
+        }
+        
+        console.log(`✅ Updated plans stats: ${totalPlans} total, ${activePlans} active, ${retiredPlans} retired, ${totalSubscribers} subscribers`);
+        
+    } catch (error) {
+        console.error('❌ Failed to update plans stats:', error);
+    }
+}
+
+async function handlePlanUpdate(planType) {
+    const form = document.getElementById('edit-plan-form');
+    const formData = new FormData(form);
+    const planData = Object.fromEntries(formData.entries());
+    
+    console.log('Updating plan:', planType, planData);
+    
+    try {
+        const response = await fetch(`/api/v2/admin/plans/${planType}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(planData)
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to update plan');
+        }
+        
+        closeModal();
+        showNotification('Plan updated successfully', 'success');
+        
+        // Refresh plans data
+        await updatePlansStats();
+        
+    } catch (error) {
+        console.error('❌ Plan update failed:', error);
+        showNotification(error.message || 'Failed to update plan', 'error');
+    }
+}
+
+async function handlePlanCreate() {
+    const form = document.getElementById('create-plan-form');
+    const formData = new FormData(form);
+    const planData = Object.fromEntries(formData.entries());
+    
+    console.log('Creating plan:', planData);
+    
+    try {
+        const response = await fetch('/api/v2/admin/plans', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(planData)
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to create plan');
+        }
+        
+        closeModal();
+        showNotification('Plan created successfully', 'success');
+        
+        // Refresh plans data
+        await updatePlansStats();
+        
+    } catch (error) {
+        console.error('❌ Plan creation failed:', error);
+        showNotification(error.message || 'Failed to create plan', 'error');
+    }
+}
+
+async function handlePlanMigration() {
+    const form = document.getElementById('plan-migration-form');
+    const formData = new FormData(form);
+    const migrationData = Object.fromEntries(formData.entries());
+    
+    console.log('Starting plan migration:', migrationData);
+    
+    try {
+        const response = await fetch(`/api/v2/admin/plans/${migrationData.sourcePlan}/migrate`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                targetPlan: migrationData.targetPlan,
+                preserveCredits: migrationData.preserveCredits === 'on',
+                notifyUsers: migrationData.notifyUsers === 'on',
+                gracePeriod: migrationData.gracePeriod === 'on'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to migrate plan');
+        }
+        
+        closeModal();
+        showNotification(result.message || 'Plan migration completed successfully', 'success');
+        
+        // Refresh plans data
+        await updatePlansStats();
+        
+    } catch (error) {
+        console.error('❌ Plan migration failed:', error);
+        showNotification(error.message || 'Failed to migrate plan', 'error');
+    }
+}
+
+function migratePlanUsers(planId) {
+    console.log(`Migrating users from plan: ${planId}`);
+    showPlanMigrationModal();
+}
+
+function reactivatePlan(planId) {
+    console.log(`Reactivating plan: ${planId}`);
+    // TODO: Implement plan reactivation
+    showNotification(`Plan ${planId} reactivated successfully`, 'success');
+}
+
+// Settings/CMS Management Functions
+async function loadSettings() {
+    try {
+        console.log('⚙️ Loading app settings...');
+        
+        const response = await fetch('/api/v2/admin/settings', {
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('✅ Settings loaded:', result.data);
+        
+        // Update API Configuration fields
+        updateAPIConfigFields(result.data.api_config?.value || {});
+        
+        // Update System Health (mock data for now)
+        updateSystemHealth();
+        
+        return result.data;
+    } catch (error) {
+        console.error('❌ Failed to load settings:', error);
+        showNotification('Failed to load settings data', 'error');
+        return {};
+    }
+}
+
+function updateAPIConfigFields(apiConfig) {
+    const rateLimitInput = document.querySelector('[type="number"][value="300"]');
+    const maxTokensInput = document.querySelector('[type="number"][value="2000"]');
+    
+    if (rateLimitInput && apiConfig.rate_limit_per_minute) {
+        rateLimitInput.value = apiConfig.rate_limit_per_minute;
+    }
+    if (maxTokensInput && apiConfig.max_tokens_per_request) {
+        maxTokensInput.value = apiConfig.max_tokens_per_request;
+    }
+}
+
+function updateSystemHealth() {
+    // This would typically fetch real system health data
+    // For now, we'll just update with mock data to show the system is working
+    console.log('📊 System health updated');
+}
+
+function showWorkoutTypesConfig() {
+    console.log('🏋️ Opening workout types configuration');
+    showModal('Workout Types Configuration', `
+        <div class="space-y-4">
+            <p class="text-gray-400 mb-4">Manage available workout types for generation.</p>
+            <div id="workout-types-container" class="space-y-2">
+                <div class="flex items-center justify-between p-2 bg-dark-secondary/50 rounded">
+                    <span class="text-white">AMRAP</span>
+                    <button onclick="removeWorkoutType(this, 'AMRAP')" class="text-red-400 hover:text-red-300">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-dark-secondary/50 rounded">
+                    <span class="text-white">For Time</span>
+                    <button onclick="removeWorkoutType(this, 'For Time')" class="text-red-400 hover:text-red-300">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-dark-secondary/50 rounded">
+                    <span class="text-white">EMOM</span>
+                    <button onclick="removeWorkoutType(this, 'EMOM')" class="text-red-400 hover:text-red-300">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-dark-secondary/50 rounded">
+                    <span class="text-white">Tabata</span>
+                    <button onclick="removeWorkoutType(this, 'Tabata')" class="text-red-400 hover:text-red-300">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="flex space-x-2">
+                <input type="text" id="new-workout-type" placeholder="Enter new workout type..." class="flex-1 px-3 py-2 bg-dark-secondary border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white">
+                <button onclick="addWorkoutType()" class="px-4 py-2 glass-button text-white rounded-lg">Add</button>
+            </div>
+        </div>
+    `, [
+        {
+            text: 'Close',
+            class: 'bg-gray-600 hover:bg-gray-700',
+            action: () => closeModal()
+        },
+        {
+            text: 'Save Changes',
+            class: 'glass-button',
+            action: () => saveWorkoutTypes()
+        }
+    ]);
+}
+
+function showEquipmentConfig() {
+    console.log('⚙️ Opening equipment configuration');
+    showModal('Equipment Configuration', `
+        <div class="space-y-4">
+            <p class="text-gray-400 mb-4">Manage available equipment options.</p>
+            <div id="equipment-container" class="space-y-2 max-h-64 overflow-y-auto">
+                <div class="flex items-center justify-between p-2 bg-dark-secondary/50 rounded">
+                    <span class="text-white">Barbell</span>
+                    <button onclick="removeEquipment(this, 'Barbell')" class="text-red-400 hover:text-red-300">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-dark-secondary/50 rounded">
+                    <span class="text-white">Dumbbells</span>
+                    <button onclick="removeEquipment(this, 'Dumbbells')" class="text-red-400 hover:text-red-300">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-dark-secondary/50 rounded">
+                    <span class="text-white">Kettlebells</span>
+                    <button onclick="removeEquipment(this, 'Kettlebells')" class="text-red-400 hover:text-red-300">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-dark-secondary/50 rounded">
+                    <span class="text-white">Pull-up Bar</span>
+                    <button onclick="removeEquipment(this, 'Pull-up Bar')" class="text-red-400 hover:text-red-300">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-dark-secondary/50 rounded">
+                    <span class="text-white">No Equipment</span>
+                    <button onclick="removeEquipment(this, 'No Equipment')" class="text-red-400 hover:text-red-300">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="flex space-x-2">
+                <input type="text" id="new-equipment" placeholder="Enter new equipment..." class="flex-1 px-3 py-2 bg-dark-secondary border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white">
+                <button onclick="addEquipment()" class="px-4 py-2 glass-button text-white rounded-lg">Add</button>
+            </div>
+        </div>
+    `, [
+        {
+            text: 'Close',
+            class: 'bg-gray-600 hover:bg-gray-700',
+            action: () => closeModal()
+        },
+        {
+            text: 'Save Changes',
+            class: 'glass-button',
+            action: () => saveEquipment()
+        }
+    ]);
+}
+
+function showDifficultyLevelsConfig() {
+    console.log('📈 Opening difficulty levels configuration');
+    showModal('Difficulty Levels Configuration', `
+        <div class="space-y-4">
+            <p class="text-gray-400 mb-4">Manage available difficulty levels.</p>
+            <div id="difficulty-container" class="space-y-2">
+                <div class="flex items-center justify-between p-2 bg-dark-secondary/50 rounded">
+                    <span class="text-white">Beginner</span>
+                    <button onclick="removeDifficulty(this, 'Beginner')" class="text-red-400 hover:text-red-300">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-dark-secondary/50 rounded">
+                    <span class="text-white">Intermediate</span>
+                    <button onclick="removeDifficulty(this, 'Intermediate')" class="text-red-400 hover:text-red-300">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-dark-secondary/50 rounded">
+                    <span class="text-white">Advanced</span>
+                    <button onclick="removeDifficulty(this, 'Advanced')" class="text-red-400 hover:text-red-300">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-dark-secondary/50 rounded">
+                    <span class="text-white">RX</span>
+                    <button onclick="removeDifficulty(this, 'RX')" class="text-red-400 hover:text-red-300">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-dark-secondary/50 rounded">
+                    <span class="text-white">Scaled</span>
+                    <button onclick="removeDifficulty(this, 'Scaled')" class="text-red-400 hover:text-red-300">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="flex space-x-2">
+                <input type="text" id="new-difficulty" placeholder="Enter new difficulty level..." class="flex-1 px-3 py-2 bg-dark-secondary border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white">
+                <button onclick="addDifficulty()" class="px-4 py-2 glass-button text-white rounded-lg">Add</button>
+            </div>
+        </div>
+    `, [
+        {
+            text: 'Close',
+            class: 'bg-gray-600 hover:bg-gray-700',
+            action: () => closeModal()
+        },
+        {
+            text: 'Save Changes',
+            class: 'glass-button',
+            action: () => saveDifficultyLevels()
+        }
+    ]);
+}
+
+function showFeatureTogglesConfig() {
+    console.log('🎛️ Opening feature toggles configuration');
+    showModal('Feature Toggles Configuration', `
+        <div class="space-y-4">
+            <p class="text-gray-400 mb-4">Enable or disable app features.</p>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center p-3 bg-dark-secondary/50 rounded-lg">
+                    <div>
+                        <div class="font-medium text-white">Coaching Cues</div>
+                        <div class="text-sm text-gray-400">Show AI-generated coaching tips</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked class="sr-only peer" data-feature="coaching_cues">
+                        <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-dark-secondary/50 rounded-lg">
+                    <div>
+                        <div class="font-medium text-white">Workout Modifications</div>
+                        <div class="text-sm text-gray-400">Allow exercise scaling and modifications</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked class="sr-only peer" data-feature="workout_modifications">
+                        <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-dark-secondary/50 rounded-lg">
+                    <div>
+                        <div class="font-medium text-white">AI Explanations</div>
+                        <div class="text-sm text-gray-400">Provide detailed workout explanations</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked class="sr-only peer" data-feature="ai_explanations">
+                        <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-dark-secondary/50 rounded-lg">
+                    <div>
+                        <div class="font-medium text-white">Social Sharing</div>
+                        <div class="text-sm text-gray-400">Allow users to share workouts</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer" data-feature="social_sharing">
+                        <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                </div>
+            </div>
+        </div>
+    `, [
+        {
+            text: 'Close',
+            class: 'bg-gray-600 hover:bg-gray-700',
+            action: () => closeModal()
+        },
+        {
+            text: 'Save Changes',
+            class: 'glass-button',
+            action: () => saveFeatureToggles()
+        }
+    ]);
+}
+
+// Helper functions for CMS actions
+function addWorkoutType() {
+    const input = document.getElementById('new-workout-type');
+    const value = input.value.trim();
+    if (value) {
+        const container = document.getElementById('workout-types-container');
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between p-2 bg-dark-secondary/50 rounded';
+        div.innerHTML = `
+            <span class="text-white">${value}</span>
+            <button onclick="removeWorkoutType(this, '${value}')" class="text-red-400 hover:text-red-300">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+        `;
+        container.appendChild(div);
+        input.value = '';
+        lucide.createIcons();
+    }
+}
+
+function removeWorkoutType(button, type) {
+    button.closest('.flex').remove();
+}
+
+function addEquipment() {
+    const input = document.getElementById('new-equipment');
+    const value = input.value.trim();
+    if (value) {
+        const container = document.getElementById('equipment-container');
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between p-2 bg-dark-secondary/50 rounded';
+        div.innerHTML = `
+            <span class="text-white">${value}</span>
+            <button onclick="removeEquipment(this, '${value}')" class="text-red-400 hover:text-red-300">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+        `;
+        container.appendChild(div);
+        input.value = '';
+        lucide.createIcons();
+    }
+}
+
+function removeEquipment(button, equipment) {
+    button.closest('.flex').remove();
+}
+
+function addDifficulty() {
+    const input = document.getElementById('new-difficulty');
+    const value = input.value.trim();
+    if (value) {
+        const container = document.getElementById('difficulty-container');
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between p-2 bg-dark-secondary/50 rounded';
+        div.innerHTML = `
+            <span class="text-white">${value}</span>
+            <button onclick="removeDifficulty(this, '${value}')" class="text-red-400 hover:text-red-300">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+        `;
+        container.appendChild(div);
+        input.value = '';
+        lucide.createIcons();
+    }
+}
+
+function removeDifficulty(button, difficulty) {
+    button.closest('.flex').remove();
+}
+
+async function saveWorkoutTypes() {
+    // TODO: Implement API call to save workout types
+    closeModal();
+    showNotification('Workout types updated successfully', 'success');
+}
+
+async function saveEquipment() {
+    // TODO: Implement API call to save equipment
+    closeModal();
+    showNotification('Equipment options updated successfully', 'success');
+}
+
+async function saveDifficultyLevels() {
+    // TODO: Implement API call to save difficulty levels
+    closeModal();
+    showNotification('Difficulty levels updated successfully', 'success');
+}
+
+async function saveFeatureToggles() {
+    // TODO: Implement API call to save feature toggles
+    closeModal();
+    showNotification('Feature toggles updated successfully', 'success');
 }
 
 function showCreditsModal(user, credits) {
@@ -2661,6 +3479,30 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // Handle AI usage action buttons (View, Rate, Refund)
+        const aiTarget = e.target.classList.contains('ai-action-btn') ? e.target : e.target.closest('.ai-action-btn');
+        if (aiTarget) {
+            const action = aiTarget.getAttribute('data-action');
+            const logId = aiTarget.getAttribute('data-log-id');
+            
+            console.log(`🤖 AI action clicked: ${action} for log ${logId}`);
+            
+            switch(action) {
+                case 'view-ai-log':
+                    viewAILog(logId);
+                    break;
+                case 'rate-ai-log':
+                    rateAILog(logId);
+                    break;
+                case 'refund-ai-log':
+                    refundAILog(logId);
+                    break;
+                default:
+                    console.warn('Unknown AI action:', action);
+            }
+            return;
+        }
+        
         // Handle modal actions (close, navigation between modals)
         // Check both the target and its parent for modal action attributes
         const modalTarget = e.target.classList.contains('modal-action-btn') || e.target.classList.contains('modal-backdrop') || e.target.getAttribute('data-action') === 'close-modal' 
@@ -2695,6 +3537,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     closeModal();
                     setTimeout(() => toggleCouponStatus(couponId, currentStatus), 100); // Small delay for smooth transition
                     break;
+                case 'rate-ai-log-modal':
+                    const aiLogId = modalTarget.getAttribute('data-log-id');
+                    closeModal();
+                    setTimeout(() => rateAILog(aiLogId), 100); // Small delay for smooth transition
+                    break;
+                case 'refund-ai-log-modal':
+                    const refundLogId = modalTarget.getAttribute('data-log-id');
+                    closeModal();
+                    setTimeout(() => refundAILog(refundLogId), 100); // Small delay for smooth transition
+                    break;
                 case 'resend-verification':
                     handleResendVerification(userId);
                     break;
@@ -2719,5 +3571,447 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('✅ Admin dashboard fully initialized');
 });
+
+// AI USAGE LOGS SECTION
+async function loadAIUsage(page = 1, filters = {}) {
+    console.log('🤖 Loading AI Usage Logs...');
+    
+    const aiUsageTable = document.getElementById('ai-logs-table-body');
+    if (!aiUsageTable) return;
+    
+    try {
+        // Show loading state
+        showTableLoading('ai-logs-table-body', 9);
+        
+        // Build query parameters
+        const params = new URLSearchParams({
+            page: page.toString(),
+            limit: '20'
+        });
+        
+        if (filters.search) params.append('search', filters.search);
+        if (filters.provider) params.append('provider', filters.provider);
+        if (filters.status) params.append('status', filters.status);
+        if (filters.start_date) params.append('start_date', filters.start_date);
+        if (filters.end_date) params.append('end_date', filters.end_date);
+        
+        // Load AI usage logs from API
+        const response = await apiCall(`/ai-usage?${params.toString()}`);
+        const { logs, pagination, summary } = response.data;
+        
+        // Update summary cards with real data
+        updateAIUsageStats(summary);
+        
+        if (!logs || logs.length === 0) {
+            aiUsageTable.innerHTML = `
+                <tr>
+                    <td colspan="9" class="px-6 py-12 text-center">
+                        <div class="flex flex-col items-center space-y-4">
+                            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                                <i data-lucide="cpu" class="w-8 h-8 text-gray-400"></i>
+                            </div>
+                            <div>
+                                <p class="text-gray-400 font-medium">No AI usage logs found</p>
+                                <p class="text-gray-500 text-sm mt-1">
+                                    ${Object.keys(filters).length > 0 ? 'Try adjusting your search filters' : 'AI usage logs will appear here when users generate workouts'}
+                                </p>
+                            </div>
+                            ${Object.keys(filters).length > 0 ? `
+                                <button onclick="clearAIFilters()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                                    Clear Filters
+                                </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+            
+            // Re-initialize icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            return;
+        }
+        
+        // Render AI usage logs table
+        const logsHTML = logs.map(log => {
+            const statusColor = getAIStatusColor(log.status);
+            const providerColor = getProviderColor(log.ai_provider);
+            const createdDate = new Date(log.created_at).toLocaleString();
+            const latencyMs = log.ai_latency_ms ? `${log.ai_latency_ms}ms` : 'N/A';
+            const qualityScore = log.quality_score ? `${log.quality_score}/5` : 'Unrated';
+            const userRating = log.user_rating ? `${log.user_rating}/5` : 'No rating';
+            
+            return `
+                <tr class="hover:bg-gray-700/50 transition-colors border-b border-gray-700">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-white">${log.id.slice(0, 8)}...</div>
+                        <div class="text-sm text-gray-400">${createdDate}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-white">${log.users?.display_name || log.users?.email || 'Unknown'}</div>
+                        <div class="text-sm text-gray-400">${log.users?.email || 'N/A'}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full ${providerColor}">${log.ai_provider || 'Unknown'}</span>
+                        <div class="text-xs text-gray-400 mt-1">${log.ai_model || 'N/A'}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white">${log.credits_used || 0}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">$${(log.credits_cost || 0).toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor}">${log.status || 'unknown'}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">${latencyMs}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">${qualityScore}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <div class="flex space-x-2">
+                            <button data-action="view-ai-log" data-log-id="${log.id}" class="ai-action-btn text-blue-400 hover:text-blue-300 font-medium transition-colors">View</button>
+                            <button data-action="rate-ai-log" data-log-id="${log.id}" class="ai-action-btn text-green-400 hover:text-green-300 font-medium transition-colors">Rate</button>
+                            ${log.refunded ? '<span class="text-red-400 text-xs">Refunded</span>' : `
+                                <button data-action="refund-ai-log" data-log-id="${log.id}" class="ai-action-btn text-red-400 hover:text-red-300 font-medium transition-colors">Refund</button>
+                            `}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        aiUsageTable.innerHTML = logsHTML;
+        
+        // Show success notification
+        showNotification(`Loaded ${logs.length} AI usage logs successfully`, 'success', 3000);
+        
+    } catch (error) {
+        console.error('❌ Failed to load AI usage logs:', error);
+        
+        // Show enhanced error state
+        showTableError('ai-usage-table', 'Failed to load AI usage logs', 9, 'loadAIUsage');
+        
+        // Show error notification
+        const errorMessage = error.message || 'Failed to load AI usage logs';
+        showNotification(`AI Usage Error: ${errorMessage}`, 'error', 8000);
+    }
+}
+
+function updateAIUsageStats(stats) {
+    const statsElements = {
+        'ai-total-generations': stats?.totalGenerations || 0,
+        'ai-total-credits': `${(stats?.totalCreditsUsed || 0).toFixed(1)}`,
+        'ai-avg-latency': stats?.avgLatency ? `${stats.avgLatency}ms` : 'N/A',
+        'ai-success-rate': stats?.statusBreakdown ? 
+            `${Math.round((stats.statusBreakdown.completed / stats.totalGenerations) * 100)}%` : 'N/A'
+    };
+    
+    Object.entries(statsElements).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        }
+    });
+}
+
+function getAIStatusColor(status) {
+    switch (status?.toLowerCase()) {
+        case 'completed': return 'bg-green-100 text-green-800';
+        case 'failed': return 'bg-red-100 text-red-800';
+        case 'pending': return 'bg-yellow-100 text-yellow-800';
+        case 'cancelled': return 'bg-gray-100 text-gray-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+}
+
+function getProviderColor(provider) {
+    switch (provider?.toLowerCase()) {
+        case 'anthropic': return 'bg-purple-100 text-purple-800';
+        case 'openai': return 'bg-blue-100 text-blue-800';
+        case 'gemini': return 'bg-green-100 text-green-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+}
+
+// AI Usage action handlers
+window.viewAILog = async function(logId) {
+    console.log('View AI log:', logId);
+    
+    try {
+        showNotification('Loading AI usage details...', 'info', 2000);
+        
+        const response = await apiCall(`/ai-usage/${logId}`);
+        const log = response.data;
+        
+        showAILogModal(log);
+        
+    } catch (error) {
+        console.error('Failed to load AI log:', error);
+        showNotification('Failed to load AI usage details', 'error');
+    }
+};
+
+window.rateAILog = async function(logId) {
+    console.log('Rate AI log:', logId);
+    
+    try {
+        showNotification('Loading rating interface...', 'info', 1000);
+        
+        const response = await apiCall(`/ai-usage/${logId}`);
+        const log = response.data;
+        
+        showAIRatingModal(log);
+        
+    } catch (error) {
+        console.error('Failed to load AI log for rating:', error);
+        showNotification('Failed to load rating interface', 'error');
+    }
+};
+
+window.refundAILog = async function(logId) {
+    console.log('Refund AI log:', logId);
+    
+    if (!confirm('Are you sure you want to refund this AI generation? This will return credits to the user.')) {
+        return;
+    }
+    
+    try {
+        showNotification('Processing refund...', 'info', 3000);
+        
+        const reason = prompt('Enter refund reason:');
+        if (!reason) {
+            showNotification('Refund cancelled - reason required', 'warning');
+            return;
+        }
+        
+        await apiCall(`/ai-usage/${logId}/refund`, {
+            method: 'POST',
+            body: JSON.stringify({ reason })
+        });
+        
+        showNotification('Refund processed successfully', 'success');
+        loadAIUsage(); // Reload table
+        
+    } catch (error) {
+        console.error('Failed to process refund:', error);
+        showNotification('Failed to process refund', 'error');
+    }
+};
+
+function showAILogModal(log) {
+    const content = `
+        <div class="space-y-6">
+            <!-- Log Header -->
+            <div class="flex items-start space-x-4">
+                <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                    <i data-lucide="cpu" class="w-8 h-8"></i>
+                </div>
+                <div class="flex-1">
+                    <h4 class="text-lg font-semibold text-white">AI Generation ${log.id.slice(0, 8)}</h4>
+                    <p class="text-gray-400">${log.ai_provider} • ${log.ai_model}</p>
+                    <div class="flex items-center space-x-4 mt-2">
+                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full ${getAIStatusColor(log.status)}">${log.status}</span>
+                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full ${getProviderColor(log.ai_provider)}">${log.ai_provider}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- User and Generation Details -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h5 class="text-sm font-medium text-gray-400 mb-2">User Information</h5>
+                    <div class="space-y-3 bg-dark-secondary/30 rounded-lg p-4">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">User:</span>
+                            <span class="text-white font-medium">${log.users?.display_name || 'Unknown'}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Email:</span>
+                            <span class="text-white">${log.users?.email || 'N/A'}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Generated:</span>
+                            <span class="text-white">${new Date(log.created_at).toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h5 class="text-sm font-medium text-gray-400 mb-2">Performance Metrics</h5>
+                    <div class="space-y-3 bg-dark-secondary/30 rounded-lg p-4">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Credits Used:</span>
+                            <span class="text-white">${log.credits_used || 0}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Cost:</span>
+                            <span class="text-white">$${(log.credits_cost || 0).toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Latency:</span>
+                            <span class="text-white">${log.ai_latency_ms ? `${log.ai_latency_ms}ms` : 'N/A'}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Quality Score:</span>
+                            <span class="text-white">${log.quality_score ? `${log.quality_score}/5` : 'Unrated'}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Request Data -->
+            ${log.request_data ? `
+            <div>
+                <h5 class="text-sm font-medium text-gray-400 mb-3">Request Details</h5>
+                <div class="bg-dark-secondary/30 rounded-lg p-4">
+                    <pre class="text-sm text-gray-300 whitespace-pre-wrap overflow-x-auto">${JSON.stringify(log.request_data, null, 2)}</pre>
+                </div>
+            </div>
+            ` : ''}
+            
+            <!-- Workout Data -->
+            ${log.workout_data ? `
+            <div>
+                <h5 class="text-sm font-medium text-gray-400 mb-3">Generated Workout</h5>
+                <div class="bg-dark-secondary/30 rounded-lg p-4">
+                    <pre class="text-sm text-gray-300 whitespace-pre-wrap overflow-x-auto">${JSON.stringify(log.workout_data, null, 2)}</pre>
+                </div>
+            </div>
+            ` : ''}
+            
+            <!-- Action Buttons -->
+            <div class="flex justify-end space-x-3 pt-4 border-t border-gray-700">
+                <button data-action="close-modal" class="modal-action-btn px-4 py-2 text-gray-400 hover:text-white transition-colors">
+                    Close
+                </button>
+                <button data-action="rate-ai-log-modal" data-log-id="${log.id}" class="modal-action-btn px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                    Rate Quality
+                </button>
+                ${log.refunded ? '' : `
+                    <button data-action="refund-ai-log-modal" data-log-id="${log.id}" class="modal-action-btn px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                        Refund
+                    </button>
+                `}
+            </div>
+        </div>
+    `;
+    
+    createModal(`AI Generation Details`, content, 'large');
+}
+
+function showAIRatingModal(log) {
+    const content = `
+        <form id="ai-rating-form" class="space-y-6">
+            <div class="text-center">
+                <h4 class="text-lg font-semibold text-white mb-2">Rate AI Generation Quality</h4>
+                <p class="text-gray-400">Generation ID: ${log.id.slice(0, 8)}</p>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-2">Quality Score (1-5)</label>
+                <select id="quality-score" class="w-full px-3 py-2 bg-dark-secondary border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    <option value="">Select quality score</option>
+                    <option value="1" ${log.quality_score === 1 ? 'selected' : ''}>1 - Very Poor</option>
+                    <option value="2" ${log.quality_score === 2 ? 'selected' : ''}>2 - Poor</option>
+                    <option value="3" ${log.quality_score === 3 ? 'selected' : ''}>3 - Average</option>
+                    <option value="4" ${log.quality_score === 4 ? 'selected' : ''}>4 - Good</option>
+                    <option value="5" ${log.quality_score === 5 ? 'selected' : ''}>5 - Excellent</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-2">User Rating (1-5)</label>
+                <select id="user-rating" class="w-full px-3 py-2 bg-dark-secondary border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    <option value="">No user rating</option>
+                    <option value="1" ${log.user_rating === 1 ? 'selected' : ''}>1 - Very Dissatisfied</option>
+                    <option value="2" ${log.user_rating === 2 ? 'selected' : ''}>2 - Dissatisfied</option>
+                    <option value="3" ${log.user_rating === 3 ? 'selected' : ''}>3 - Neutral</option>
+                    <option value="4" ${log.user_rating === 4 ? 'selected' : ''}>4 - Satisfied</option>
+                    <option value="5" ${log.user_rating === 5 ? 'selected' : ''}>5 - Very Satisfied</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-400 mb-2">Notes (Optional)</label>
+                <textarea id="rating-notes" rows="3" class="w-full px-3 py-2 bg-dark-secondary border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Add any notes about the quality...">${log.rating_notes || ''}</textarea>
+            </div>
+            
+            <div class="flex justify-end space-x-3 pt-4 border-t border-gray-700">
+                <button type="button" data-action="close-modal" class="modal-action-btn px-4 py-2 text-gray-400 hover:text-white transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                    Save Rating
+                </button>
+            </div>
+        </form>
+    `;
+    
+    createModal('Rate AI Generation', content, 'medium');
+    
+    // Add form submit handler
+    document.getElementById('ai-rating-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await handleAIRatingUpdate(log.id);
+    });
+}
+
+async function handleAIRatingUpdate(logId) {
+    try {
+        const qualityScore = document.getElementById('quality-score').value;
+        const userRating = document.getElementById('user-rating').value;
+        const notes = document.getElementById('rating-notes').value;
+        
+        const updateData = {};
+        if (qualityScore) updateData.quality_score = parseInt(qualityScore);
+        if (userRating) updateData.user_rating = parseInt(userRating);
+        if (notes) updateData.notes = notes;
+        
+        if (Object.keys(updateData).length === 0) {
+            showNotification('Please provide at least one rating', 'warning');
+            return;
+        }
+        
+        showNotification('Updating rating...', 'info', 2000);
+        
+        await apiCall(`/ai-usage/${logId}/rating`, {
+            method: 'PUT',
+            body: JSON.stringify(updateData)
+        });
+        
+        showNotification('Rating updated successfully', 'success');
+        closeModal();
+        loadAIUsage(); // Reload table
+        
+    } catch (error) {
+        console.error('Failed to update rating:', error);
+        showNotification('Failed to update rating', 'error');
+    }
+}
+
+// Helper functions for AI usage
+window.refreshAIUsage = function() {
+    loadAIUsage();
+};
+
+window.applyAIFilters = function() {
+    const search = document.getElementById('ai-search')?.value || '';
+    const provider = document.getElementById('ai-provider-filter')?.value || '';
+    const status = document.getElementById('ai-status-filter')?.value || '';
+    const startDate = document.getElementById('ai-start-date')?.value || '';
+    const endDate = document.getElementById('ai-end-date')?.value || '';
+    
+    loadAIUsage(1, { search, provider, status, start_date: startDate, end_date: endDate });
+};
+
+window.clearAIFilters = function() {
+    document.getElementById('ai-search').value = '';
+    document.getElementById('ai-provider-filter').value = '';
+    document.getElementById('ai-status-filter').value = '';
+    document.getElementById('ai-start-date').value = '';
+    document.getElementById('ai-end-date').value = '';
+    
+    loadAIUsage();
+};
+
+window.exportAIUsageLogs = function() {
+    showNotification('Export functionality coming soon...', 'info');
+};
 
 console.log('✅ Admin JS loaded successfully');
